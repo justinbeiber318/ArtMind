@@ -37,12 +37,17 @@ export default function ChatbotWidget() {
         onClick={() => setOpen((o) => !o)}
         aria-label="Open art concierge"
         style={{
-          position: 'fixed', bottom: 28, right: 28, width: 58, height: 58,
-          background: 'var(--navy)', color: '#000', border: 'none', cursor: 'pointer',
-          borderRadius: '50%', fontFamily: 'var(--font-display)', fontSize: '1.1rem', zIndex: 60,
+          position: 'fixed', bottom: 28, right: 28, width: 64, height: 64,
+          background: 'var(--navy)', border: 'none', cursor: 'pointer',
+          borderRadius: '50%', zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center',
           boxShadow: '0 6px 24px rgba(212,175,95,0.35)',
         }}
-      >{open ? '✕' : 'AI'}</button>
+      >
+        {open
+          ? <span style={{ fontSize: '1.3rem', color: 'var(--gold)', fontFamily: 'var(--font-display)', lineHeight: 1 }}>✕</span>
+          : <img src="/chatbot.png" alt="chatbot" style={{ width: 46, height: 46, objectFit: 'contain', display: 'block' }} />
+        }
+      </button>
 
       <AnimatePresence>
         {open && (
