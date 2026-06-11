@@ -35,7 +35,7 @@ export default function Login() {
     <section className="section">
       <div className="container" style={{ maxWidth: 420 }}>
         <div className="eyebrow">Welcome back</div>
-        <h2 style={{ marginBottom: 28 }}>Sign in to ArtMind</h2>
+        <h2 style={{ marginBottom: 28 }}>Sign in to Aurelis</h2>
 
         {error && <div className="form-error">{error}</div>}
 
@@ -56,7 +56,7 @@ export default function Login() {
         </form>
 
         <p className="muted" style={{ marginTop: 20, fontSize: '0.9rem' }}>
-          New to ArtMind? <Link to="/register" style={{ color: 'var(--navy)' }}>Create an account</Link>
+          New to Aurelis? <Link to="/register" style={{ color: 'var(--navy)' }}>Create an account</Link>
         </p>
         <p className="muted" style={{ marginTop: 8, fontSize: '0.8rem' }}>
           Demo: demo@artmind.test / Demo1234

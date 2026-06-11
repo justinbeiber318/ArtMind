@@ -34,7 +34,7 @@ export default function AISearch() {
           <div className="eyebrow">Natural Language Search</div>
           <h1>Describe what you want to see</h1>
           <p className="muted" style={{ marginTop: 8, maxWidth: 620 }}>
-            ArtMind interprets plain-language requests — style, subject, color, and mood — and
+            Aurelis interprets plain-language requests — style, subject, color, and mood — and
             translates them into a filtered search across the collection.
           </p>
         </div>

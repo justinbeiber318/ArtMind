@@ -64,7 +64,7 @@ export default function PaintingDetails() {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     doc.setTextColor(30, 58, 95);
-    doc.text('ARTMIND  ·  GALLERY WALL LABEL', margin, y);
+    doc.text('AURELIS  ·  GALLERY WALL LABEL', margin, y);
     y += 30;
     doc.setTextColor(45, 45, 45);
     doc.setFontSize(22);
@@ -177,7 +177,7 @@ export default function PaintingDetails() {
             ) : (
               <>
                 <p className="muted" style={{ fontSize: '0.9rem', marginBottom: 14 }}>
-                  Generate a concise curatorial note for this work using ArtMind's assistant.
+                  Generate a concise curatorial note for this work using Aurelis's assistant.
                 </p>
                 <button className="btn btn--ghost" onClick={() => aiSummary.refetch()} disabled={aiSummary.isFetching}>
                   {aiSummary.isFetching ? 'Generating…' : 'Generate summary'}

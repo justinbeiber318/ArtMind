@@ -31,7 +31,7 @@ export default function AIRecognition() {
           <div className="eyebrow">AI Image Recognition</div>
           <h1>Analyze an artwork</h1>
           <p className="muted" style={{ marginTop: 8, maxWidth: 620 }}>
-            Upload an image and ArtMind will infer its style and category, extract the dominant
+            Upload an image and Aurelis will infer its style and category, extract the dominant
             color palette, and surface related works from the collection.
           </p>
         </div>

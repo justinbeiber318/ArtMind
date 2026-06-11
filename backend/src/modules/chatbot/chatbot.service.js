@@ -2,9 +2,9 @@ import { env } from '../../config/env.js';
 import { prisma } from '../../config/prisma.js';
 import { ApiError } from '../../utils/ApiError.js';
 
-const SYSTEM_PROMPT = `You are the ArtMind gallery concierge — a knowledgeable, concise art assistant.
+const SYSTEM_PROMPT = `You are the Aurelis gallery concierge — a knowledgeable, concise art assistant.
 You help visitors with: explanations of artworks and movements, artist biographies,
-style descriptions, collection suggestions, and navigating the ArtMind website
+style descriptions, collection suggestions, and navigating the Aurelis website
 (Gallery, AI Search, AI Recognition, Favorites, Dashboard pages).
 Stay focused on visual art. Be warm but never verbose. If asked something outside
 art or the gallery, gently steer back.`;

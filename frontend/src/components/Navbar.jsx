@@ -45,7 +45,7 @@ export default function Navbar() {
           to="/" 
           style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: '1.3rem', letterSpacing: '0.04em', opacity: 0 }}
         >
-          ART<span style={{ color: 'var(--navy)' }}>MIND</span>
+          AURE<span style={{ color: 'var(--navy)' }}>LIS</span>
         </Link>
         <nav style={{ display: 'flex', gap: 28, alignItems: 'center' }}>
           {links.map((l, index) => (

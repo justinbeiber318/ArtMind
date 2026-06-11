@@ -5,7 +5,7 @@ export default function Footer() {
     <footer style={{ background: '#040404', color: 'var(--muted)', marginTop: 80, borderTop: '1px solid var(--border)' }}>
       <div className="container" style={{ padding: '56px 24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 32 }}>
         <div>
-          <div style={{ fontFamily: 'var(--font-display)', color: 'var(--dark-gray)', fontSize: '1.2rem', marginBottom: 12, letterSpacing: '0.08em' }}>ARTMIND</div>
+          <div style={{ fontFamily: 'var(--font-display)', color: 'var(--dark-gray)', fontSize: '1.2rem', marginBottom: 12, letterSpacing: '0.08em' }}>AURELIS</div>
           <p style={{ fontSize: '0.85rem', maxWidth: 260 }}>A curated digital gallery pairing fine art with intelligent discovery.</p>
         </div>
         <div>
@@ -26,7 +26,7 @@ export default function Footer() {
         </div>
       </div>
       <div style={{ borderTop: '1px solid var(--border)', padding: '20px 0', textAlign: 'center', fontSize: '0.8rem', color: 'var(--muted)' }}>
-        © {new Date().getFullYear()} ArtMind. All works shown for demonstration.
+        © {new Date().getFullYear()} Aurelis. All works shown for demonstration.
       </div>
     </footer>
   );

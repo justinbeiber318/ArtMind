@@ -5,7 +5,7 @@ import { chatbotApi } from '../api/endpoints.js';
 export default function ChatbotWidget() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: 'Hello — I\'m the ArtMind concierge. Ask me about a movement, an artist, or how to find a piece.' },
+    { role: 'assistant', content: 'Hello — I\'m the Aurelis concierge. Ask me about a movement, an artist, or how to find a piece.' },
   ]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -58,7 +58,7 @@ export default function ChatbotWidget() {
             }}
           >
             <div style={{ background: 'var(--navy)', color: '#000', padding: '14px 18px', fontFamily: 'var(--font-display)', fontWeight: 600 }}>
-              ArtMind Concierge
+              Aurelis Concierge
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
               {messages.map((m, i) => (
