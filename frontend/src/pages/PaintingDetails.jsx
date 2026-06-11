@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useSelector } from 'react-redux';
@@ -6,6 +6,7 @@ import { jsPDF } from 'jspdf';
 import { paintingApi, favoriteApi } from '../api/endpoints.js';
 import { selectIsAuthed } from '../features/auth/authSlice.js';
 import PaintingCard from '../components/PaintingCard.jsx';
+import { gsap } from 'gsap';
 
 export default function PaintingDetails() {
   const { slug } = useParams();
@@ -13,10 +14,26 @@ export default function PaintingDetails() {
   const [favorited, setFavorited] = useState(false);
   const [shareNote, setShareNote] = useState('');
 
+  const imgContainerRef = useRef(null);
+  const infoRef = useRef(null);
+
   const { data: painting, isLoading } = useQuery({
     queryKey: ['painting', slug],
     queryFn: () => paintingApi.detail(slug),
   });
+
+  useEffect(() => {
+    if (painting) {
+      gsap.fromTo(imgContainerRef.current, 
+        { opacity: 0, x: -40 }, 
+        { opacity: 1, x: 0, duration: 0.8, ease: 'power3.out' }
+      );
+      gsap.fromTo(infoRef.current, 
+        { opacity: 0, x: 40 }, 
+        { opacity: 1, x: 0, duration: 0.8, ease: 'power3.out', delay: 0.15 }
+      );
+    }
+  }, [painting]);
 
   const similar = useQuery({
     queryKey: ['painting', painting?.id, 'similar'],
@@ -99,12 +116,12 @@ export default function PaintingDetails() {
   return (
     <>
       <section className="section container" style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: 56, alignItems: 'start' }}>
-        <div style={{ background: 'var(--light-gray)' }}>
+        <div ref={imgContainerRef} style={{ background: 'var(--light-gray)', opacity: 0 }}>
           <img src={painting.imageUrl} alt={painting.title}
             style={{ width: '100%', objectFit: 'contain' }} />
         </div>
 
-        <div>
+        <div ref={infoRef} style={{ opacity: 0 }}>
           <div className="eyebrow">{painting.category?.name}</div>
           <h1 style={{ fontSize: 'clamp(1.8rem, 3vw, 2.6rem)' }}>{painting.title}</h1>
           <p className="muted" style={{ fontSize: '1.05rem', marginTop: 6 }}>

@@ -1,7 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { paintingApi, categoryApi, artistApi } from '../api/endpoints.js';
 import PaintingCard from '../components/PaintingCard.jsx';
+import { gsap } from 'gsap';
 
 const SORTS = [
   { value: 'newest', label: 'Newest' },
@@ -27,6 +29,60 @@ export default function Gallery() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({ category: '', style: '', artist: '', surface: '', color: '' });
   const [sort, setSort] = useState('newest');
+  const navigate = useNavigate();
+
+  const headerRef = useRef(null);
+  const asideRef = useRef(null);
+
+  useEffect(() => {
+    gsap.fromTo(headerRef.current, 
+      { opacity: 0, y: -20 }, 
+      { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' }
+    );
+    gsap.fromTo(asideRef.current, 
+      { opacity: 0, x: -30 }, 
+      { opacity: 1, x: 0, duration: 0.8, ease: 'power3.out', delay: 0.1 }
+    );
+  }, []);
+
+  useEffect(() => {
+    let ts = 0;
+    
+    const handleWheel = (e) => {
+      if (window.scrollY === 0 && e.deltaY < 0) {
+        navigate('/', { state: { fromGallery: true } });
+      }
+    };
+
+    const handleTouchStart = (e) => {
+      ts = e.touches[0].clientY;
+    };
+
+    const handleTouchMove = (e) => {
+      const deltaY = e.touches[0].clientY - ts;
+      if (window.scrollY === 0 && deltaY > 40) {
+        navigate('/', { state: { fromGallery: true } });
+      }
+    };
+
+    const handleKeyDown = (e) => {
+      if (window.scrollY === 0 && (e.key === 'ArrowUp' || e.key === 'w')) {
+        navigate('/', { state: { fromGallery: true } });
+      }
+    };
+
+    window.addEventListener('wheel', handleWheel);
+    window.addEventListener('touchstart', handleTouchStart);
+    window.addEventListener('touchmove', handleTouchMove);
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('wheel', handleWheel);
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [navigate]);
 
   const categories = useQuery({ queryKey: ['categories'], queryFn: categoryApi.list });
   const styles = useQuery({ queryKey: ['styles'], queryFn: categoryApi.styles });
@@ -66,7 +122,7 @@ export default function Gallery() {
 
   return (
     <>
-      <div className="page-head">
+      <div className="page-head" ref={headerRef} style={{ opacity: 0 }}>
         <div className="container">
           <div className="eyebrow">The Collection</div>
           <h1>Gallery</h1>
@@ -78,7 +134,7 @@ export default function Gallery() {
 
       <section className="section container" style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 40, alignItems: 'start' }}>
         {/* Filter rail */}
-        <aside style={{ position: 'sticky', top: 90 }}>
+        <aside ref={asideRef} style={{ position: 'sticky', top: 90, opacity: 0 }}>
           <form onSubmit={onSearchSubmit} className="field">
             <label>Search</label>
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Title or description" />
@@ -135,7 +191,7 @@ export default function Gallery() {
           <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginBottom: 24 }}>
             <span className="muted" style={{ fontSize: '0.85rem' }}>Sort by</span>
             <select value={sort} onChange={(e) => setSort(e.target.value)}
-              style={{ padding: '8px 12px', border: '1px solid var(--border)', fontFamily: 'var(--font-body)' }}>
+              style={{ padding: '8px 12px', border: '1px solid var(--border)', fontFamily: 'var(--font-body)', background: 'var(--white)', color: 'var(--dark-gray)' }}>
               {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
           </div>

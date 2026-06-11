@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import Navbar from './components/Navbar.jsx';
 import Footer from './components/Footer.jsx';
@@ -26,9 +26,12 @@ function Protected({ children, admin }) {
 }
 
 export default function App() {
+  const location = useLocation();
+  const isHome = location.pathname === '/';
+
   return (
     <>
-      <Navbar />
+      {!isHome && <Navbar />}
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
@@ -45,8 +48,8 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
-      <Footer />
-      <ChatbotWidget />
+      {!isHome && <Footer />}
+      {!isHome && <ChatbotWidget />}
     </>
   );
 }

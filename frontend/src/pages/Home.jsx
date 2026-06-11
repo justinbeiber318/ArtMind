@@ -1,120 +1,309 @@
-import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { paintingApi, categoryApi, artistApi, recommendationApi } from '../api/endpoints.js';
-import PaintingCard from '../components/PaintingCard.jsx';
+import { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 
-const testimonials = [
-  { quote: 'ArtMind reads my taste better than any gallery assistant I have worked with.', name: 'Beatrice Hahn', role: 'Private Collector' },
-  { quote: 'The recognition tool helped me catalogue an entire estate in an afternoon.', name: 'Daniel Osei', role: 'Estate Curator' },
-  { quote: 'A quietly intelligent platform. The recommendations are genuinely useful.', name: 'Yuki Sato', role: 'Designer' },
+const SCENES_DATA = [
+  {
+    tag: 'A silent sanctuary',
+    title: 'AURELIS',
+    sub: 'Where the dust of forgotten years settles on timeless canvas',
+    image: '/scene0.png',
+  },
+  {
+    tag: 'Beyond the frames',
+    title: 'THE GALLERY',
+    sub: 'Enter a corridor where brushstrokes whisper stories of a thousand lifetimes',
+    image: '/scene1.jpeg',
+    ctaLink: '/gallery',
+    ctaLabel: 'Enter the Gallery',
+  },
+  {
+    tag: 'Deep in the vault',
+    title: 'THE LIBRARY',
+    sub: 'Unlock the quiet memories of humanity\'s soul, curated by intelligence',
+    image: '/scene2.jpeg',
+    ctaLink: '/ai-search',
+    ctaLabel: 'Try AI Search',
+  },
 ];
 
+const LABELS = ['Aurelis', 'Gallery', 'Library'];
+const TRACK_H = 200;
+const THUMB_H = 44;
+const CF_A = { s: 0.28, e: 0.37 };
+const CF_B = { s: 0.67, e: 0.76 };
+const SC = [
+  { s: 0, e: 0.30, ss: 1.00, se: 1.35 },
+  { s: 0.30, e: 0.70, ss: 1.10, se: 1.40 },
+  { s: 0.70, e: 1.00, ss: 1.00, se: 1.30 },
+];
+
+function clamp(v, lo, hi) {
+  return Math.max(lo, Math.min(hi, v));
+}
+
+function inv(a, b, v) {
+  return clamp((v - a) / (b - a), 0, 1);
+}
+
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
+function getActive(p) {
+  return p < 0.35 ? 0 : p < 0.72 ? 1 : 2;
+}
+
 export default function Home() {
-  const featured = useQuery({ queryKey: ['paintings', 'featured'], queryFn: () => paintingApi.list({ sort: 'trending', limit: 8 }) });
-  const categories = useQuery({ queryKey: ['categories'], queryFn: categoryApi.list });
-  const artists = useQuery({ queryKey: ['artists', 'popular'], queryFn: artistApi.popular });
-  const recs = useQuery({ queryKey: ['recs', 'preview'], queryFn: recommendationApi.preview });
+  const [activeIdx, setActiveIdx] = useState(0);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const fromGallery = location.state?.fromGallery;
+
+  const rootRef = useRef(null);
+  const trackRef = useRef(null);
+  const thumbRef = useRef(null);
+  const hintRef = useRef(null);
+  const pctRef = useRef(null);
+  const dotLabelRef = useRef(null);
+  const sceneRefs = useRef([]);
+  const imgRefs = useRef([]);
+
+  const scrollPctRef = useRef(fromGallery ? 1 : 0);
+  const targetPctRef = useRef(fromGallery ? 1 : 0);
+  const currentActiveRef = useRef(fromGallery ? 2 : 0);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+
+    // Direct render function (bypasses React state for 60fps animations)
+    const renderSlider = (p) => {
+      const o0 = p <= CF_A.s ? 1 : p <= CF_A.e ? 1 - inv(CF_A.s, CF_A.e, p) : 0;
+      const o1 =
+        p >= CF_A.s && p <= CF_A.e
+          ? inv(CF_A.s, CF_A.e, p)
+          : p > CF_A.e && p <= CF_B.s
+          ? 1
+          : p >= CF_B.s && p <= CF_B.e
+          ? 1 - inv(CF_B.s, CF_B.e, p)
+          : 0;
+      const o2 = p >= CF_B.s && p <= CF_B.e ? inv(CF_B.s, CF_B.e, p) : p > CF_B.e ? 1 : 0;
+
+      // Update opacities
+      if (sceneRefs.current[0]) sceneRefs.current[0].style.opacity = o0;
+      if (sceneRefs.current[1]) sceneRefs.current[1].style.opacity = o1;
+      if (sceneRefs.current[2]) sceneRefs.current[2].style.opacity = o2;
+
+      // Update scale transforms
+      SC.forEach((sc, i) => {
+        if (imgRefs.current[i]) {
+          imgRefs.current[i].style.transform = `scale(${lerp(
+            sc.ss,
+            sc.se,
+            inv(sc.s, sc.e, p)
+          )})`;
+        }
+      });
+
+      // Update progress thumb
+      if (thumbRef.current) {
+        const top = p * (TRACK_H - THUMB_H);
+        thumbRef.current.style.height = `${THUMB_H}px`;
+        thumbRef.current.style.marginTop = `${top}px`;
+      }
+
+      // Update dot label
+      const active = getActive(p);
+      if (dotLabelRef.current) {
+        dotLabelRef.current.textContent = LABELS[active];
+      }
+
+      // React state update only when active slide index changes
+      if (active !== currentActiveRef.current) {
+        currentActiveRef.current = active;
+        setActiveIdx(active);
+      }
+
+      // Update scroll hint opacity
+      if (hintRef.current) {
+        hintRef.current.style.opacity = p < 0.04 ? 1 : 0;
+      }
+
+      // Update percentage display
+      if (pctRef.current) {
+        pctRef.current.textContent = `${Math.round(p * 100)}%`;
+      }
+    };
+
+    // Animation Loop
+    let animationFrameId;
+    const loop = () => {
+      scrollPctRef.current += (targetPctRef.current - scrollPctRef.current) * 0.072;
+      if (Math.abs(targetPctRef.current - scrollPctRef.current) < 0.0001) {
+        scrollPctRef.current = targetPctRef.current;
+      }
+      renderSlider(scrollPctRef.current);
+      animationFrameId = requestAnimationFrame(loop);
+    };
+    loop();
+
+    // Event Listeners
+    const handleWheel = (e) => {
+      e.preventDefault();
+      if (targetPctRef.current === 1 && e.deltaY > 0) {
+        navigate('/gallery');
+        return;
+      }
+      targetPctRef.current = clamp(targetPctRef.current + e.deltaY / 2000, 0, 1);
+    };
+
+    let ts = 0;
+    let tp = 0;
+    const handleTouchStart = (e) => {
+      ts = e.touches[0].clientY;
+      tp = targetPctRef.current;
+    };
+    const handleTouchMove = (e) => {
+      const deltaY = ts - e.touches[0].clientY;
+      if (targetPctRef.current === 1 && deltaY > 40) {
+        navigate('/gallery');
+        return;
+      }
+      targetPctRef.current = clamp(tp + deltaY / 600, 0, 1);
+      if (e.cancelable) e.preventDefault();
+    };
+
+    let dr = false;
+    let dy0 = 0;
+    let dp0 = 0;
+    const handleMouseDown = (e) => {
+      dr = true;
+      dy0 = e.clientY;
+      dp0 = targetPctRef.current;
+    };
+    const handleMouseMove = (e) => {
+      if (!dr) return;
+      const deltaY = e.clientY - dy0;
+      if (targetPctRef.current === 1 && deltaY < -60) {
+        navigate('/gallery');
+        return;
+      }
+      targetPctRef.current = clamp(dp0 + (e.clientY - dy0) / 600, 0, 1);
+    };
+    const handleMouseUp = () => {
+      dr = false;
+    };
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'ArrowDown' || e.key === 's') {
+        if (targetPctRef.current === 1) {
+          navigate('/gallery');
+          return;
+        }
+        targetPctRef.current = clamp(targetPctRef.current + 0.05, 0, 1);
+      }
+      if (e.key === 'ArrowUp' || e.key === 'w') {
+        targetPctRef.current = clamp(targetPctRef.current - 0.05, 0, 1);
+      }
+      if (e.key === '1') targetPctRef.current = 0;
+      if (e.key === '2') targetPctRef.current = 0.35;
+      if (e.key === '3') targetPctRef.current = 0.72;
+    };
+
+    // Attach listeners
+    root.addEventListener('wheel', handleWheel, { passive: false });
+    root.addEventListener('touchstart', handleTouchStart, { passive: true });
+    root.addEventListener('touchmove', handleTouchMove, { passive: false });
+    root.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('keydown', handleKeyDown);
+
+    // Initial render
+    renderSlider(fromGallery ? 1 : 0);
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      root.removeEventListener('wheel', handleWheel);
+      root.removeEventListener('touchstart', handleTouchStart);
+      root.removeEventListener('touchmove', handleTouchMove);
+      root.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  const handleDotClick = (index) => {
+    const targets = [0, 0.35, 0.72];
+    targetPctRef.current = targets[index];
+  };
+
+  const handleTrackClick = (e) => {
+    if (!trackRef.current) return;
+    const r = trackRef.current.getBoundingClientRect();
+    targetPctRef.current = clamp((e.clientY - r.top) / r.height, 0, 1);
+  };
 
   return (
-    <>
-      {/* Hero */}
-      <section style={{ background: 'var(--light-gray)' }}>
-        <div className="container" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, alignItems: 'center', minHeight: 520, padding: '64px 24px' }}>
-          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6 }}>
-            <div className="eyebrow">A Curated Digital Gallery</div>
-            <h1>Discover fine art, guided by intelligence.</h1>
-            <p style={{ fontSize: '1.05rem', color: 'var(--muted)', margin: '20px 0 32px', maxWidth: 460 }}>
-              Browse a considered collection of paintings, search in plain language, and let ArtMind surface the works that speak to you.
-            </p>
-            <div style={{ display: 'flex', gap: 14 }}>
-              <Link to="/gallery" className="btn">Enter the Gallery</Link>
-              <Link to="/ai-search" className="btn btn--ghost">Try AI Search</Link>
-            </div>
-          </motion.div>
-          <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.7 }}
-            style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-            {(featured.data?.data || []).slice(0, 4).map((p) => (
-              <img key={p.id} src={p.thumbnailUrl || p.imageUrl} alt={p.title}
-                style={{ width: '100%', aspectRatio: '4/5', objectFit: 'cover' }} />
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Featured */}
-      <section className="section container">
-        <div className="eyebrow">Featured</div>
-        <h2 style={{ marginBottom: 32 }}>Trending this week</h2>
-        <div className="grid grid--cards">
-          {(featured.data?.data || []).map((p, i) => <PaintingCard key={p.id} painting={p} index={i} />)}
-        </div>
-      </section>
-
-      {/* Trending categories */}
-      <section className="section--tight" style={{ background: 'var(--light-gray)' }}>
-        <div className="container">
-          <div className="eyebrow">Browse</div>
-          <h2 style={{ marginBottom: 28 }}>Trending categories</h2>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14 }}>
-            {(categories.data || []).map((c) => (
-              <Link key={c.id} to={`/gallery?category=${c.slug}`}
-                style={{ padding: '16px 26px', background: '#fff', border: '1px solid var(--border)', minWidth: 180 }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.05rem' }}>{c.name}</div>
-                <div className="muted" style={{ fontSize: '0.82rem' }}>{c._count?.paintings ?? 0} works</div>
-              </Link>
-            ))}
+    <div className="slider-root" ref={rootRef}>
+      {SCENES_DATA.map((scene, i) => (
+        <div
+          key={i}
+          ref={(el) => (sceneRefs.current[i] = el)}
+          className={`slider-scene ${activeIdx === i ? 'active-scene' : ''}`}
+        >
+          <img
+            id={`img${i}`}
+            ref={(el) => (imgRefs.current[i] = el)}
+            src={scene.image}
+            alt={scene.title}
+          />
+          <div className="slider-overlay" />
+          <div className="slider-label">
+            <div className="tag">{scene.tag}</div>
+            <div className="title">{scene.title}</div>
+            <div className="sub">{scene.sub}</div>
+            {scene.ctaLink && (
+              <div className="slider-cta">
+                <Link to={scene.ctaLink} className="btn">
+                  {scene.ctaLabel}
+                </Link>
+              </div>
+            )}
           </div>
         </div>
-      </section>
+      ))}
 
-      {/* Popular artists */}
-      <section className="section container">
-        <div className="eyebrow">Makers</div>
-        <h2 style={{ marginBottom: 28 }}>Popular artists</h2>
-        <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
-          {(artists.data || []).map((a) => (
-            <Link key={a.id} to={`/gallery?artist=${a.slug}`} style={{ textAlign: 'center' }}>
-              <img src={a.portraitUrl} alt={a.name} style={{ width: 110, height: 110, objectFit: 'cover', borderRadius: '50%', margin: '0 auto 12px' }} />
-              <div style={{ fontFamily: 'var(--font-display)' }}>{a.name}</div>
-              <div className="muted" style={{ fontSize: '0.8rem' }}>{a.nationality}</div>
-            </Link>
-          ))}
-        </div>
-      </section>
+      {/* Progress track */}
+      <div id="progress-track" ref={trackRef} onClick={handleTrackClick}>
+        <div id="progress-thumb" ref={thumbRef} />
+      </div>
 
-      {/* AI recommendation preview */}
-      <section className="section--tight" style={{ background: 'var(--navy)', color: '#fff' }}>
-        <div className="container">
-          <div className="eyebrow" style={{ color: '#9fc1e6' }}>Powered by AI</div>
-          <h2 style={{ color: '#fff', marginBottom: 28 }}>Curated for discovery</h2>
-          <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
-            {(recs.data || []).map((p) => (
-              <Link key={p.id} to={`/paintings/${p.slug}`}>
-                <img src={p.thumbnailUrl || p.imageUrl} alt={p.title} style={{ width: '100%', aspectRatio: '4/5', objectFit: 'cover' }} />
-                <div style={{ paddingTop: 10, color: '#fff' }}>{p.title}</div>
-                <div style={{ fontSize: '0.82rem', color: '#9fc1e6' }}>{p.artist?.name}</div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* Navigation dots */}
+      <div id="scene-dots">
+        {LABELS.map((_, i) => (
+          <div
+            key={i}
+            className={`dot ${activeIdx === i ? 'active' : ''}`}
+            onClick={() => handleDotClick(i)}
+          />
+        ))}
+      </div>
 
-      {/* Testimonials */}
-      <section className="section container">
-        <div className="eyebrow center">Voices</div>
-        <h2 className="center" style={{ marginBottom: 40 }}>What collectors say</h2>
-        <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}>
-          {testimonials.map((t) => (
-            <blockquote key={t.name} style={{ borderLeft: '2px solid var(--navy)', paddingLeft: 20 }}>
-              <p style={{ fontSize: '1.02rem', fontStyle: 'italic' }}>“{t.quote}”</p>
-              <footer style={{ marginTop: 14 }}>
-                <strong>{t.name}</strong><br /><span className="muted" style={{ fontSize: '0.85rem' }}>{t.role}</span>
-              </footer>
-            </blockquote>
-          ))}
-        </div>
-      </section>
-    </>
+      {/* Label and Hint */}
+      <div className="dot-label" ref={dotLabelRef}>
+        Aurelis
+      </div>
+      <div id="scroll-hint" ref={hintRef}>
+        <div className="arrow">&#8595;</div>
+        <span>Scroll to explore</span>
+      </div>
+
+      {/* Percentage Indicator */}
+      <div id="pct-display" ref={pctRef}>
+        0%
+      </div>
+    </div>
   );
 }
