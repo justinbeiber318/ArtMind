@@ -4,11 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import { paintingApi, categoryApi, artistApi } from '../api/endpoints.js';
 import PaintingCard from '../components/PaintingCard.jsx';
 import { gsap } from 'gsap';
+import { useTranslation } from 'react-i18next';
 
 const SORTS = [
-  { value: 'newest', label: 'Newest' },
-  { value: 'popular', label: 'Popular' },
-  { value: 'trending', label: 'Trending' },
+  { value: 'newest', key: 'newest' },
+  { value: 'popular', key: 'popular' },
+  { value: 'trending', key: 'trending' },
 ];
 
 const SURFACES = ['Canvas', 'Panel', 'Paper', 'Linen', 'Board'];
@@ -25,6 +26,7 @@ const COLOR_THEMES = [
 const PAGE_SIZE = 12;
 
 export default function Gallery() {
+  const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({ category: '', style: '', artist: '', surface: '', color: '' });
@@ -124,10 +126,10 @@ export default function Gallery() {
     <>
       <div className="page-head" ref={headerRef} style={{ opacity: 0 }}>
         <div className="container">
-          <div className="eyebrow">The Collection</div>
-          <h1>Gallery</h1>
+          <div className="eyebrow">{t('collection')}</div>
+          <h1>{t('gallery')}</h1>
           <p className="muted" style={{ marginTop: 8 }}>
-            {total.toLocaleString()} works available to explore.
+            {total.toLocaleString()} {t('works_available')}
           </p>
         </div>
       </div>
@@ -136,32 +138,32 @@ export default function Gallery() {
         {/* Filter rail */}
         <aside ref={asideRef} style={{ position: 'sticky', top: 90, opacity: 0 }}>
           <form onSubmit={onSearchSubmit} className="field">
-            <label>Search</label>
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Title or description" />
+            <label>{t('search')}</label>
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('title_or_description')} />
           </form>
 
-          <FilterGroup label="Category">
+          <FilterGroup label={t('category')}>
             {(categories.data || []).map((c) => (
               <FilterChip key={c.id} active={filters.category === c.slug}
                 onClick={() => updateFilter('category', c.slug)}>{c.name}</FilterChip>
             ))}
           </FilterGroup>
 
-          <FilterGroup label="Style">
+          <FilterGroup label={t('style')}>
             {(styles.data || []).map((s) => (
               <FilterChip key={s.id} active={filters.style === s.slug}
                 onClick={() => updateFilter('style', s.slug)}>{s.name}</FilterChip>
             ))}
           </FilterGroup>
 
-          <FilterGroup label="Artist">
+          <FilterGroup label={t('artist')}>
             {(artists.data?.data || []).map((a) => (
               <FilterChip key={a.id} active={filters.artist === a.slug}
                 onClick={() => updateFilter('artist', a.slug)}>{a.name}</FilterChip>
             ))}
           </FilterGroup>
 
-          <FilterGroup label="Color theme">
+          <FilterGroup label={t('color_theme')}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {COLOR_THEMES.map((c) => (
                 <button key={c.hex} type="button" title={c.label}
@@ -175,7 +177,7 @@ export default function Gallery() {
             </div>
           </FilterGroup>
 
-          <FilterGroup label="Surface">
+          <FilterGroup label={t('surface')}>
             {SURFACES.map((s) => (
               <FilterChip key={s} active={filters.surface === s}
                 onClick={() => updateFilter('surface', s)}>{s}</FilterChip>
@@ -183,23 +185,23 @@ export default function Gallery() {
           </FilterGroup>
 
           <button type="button" className="btn btn--ghost btn--block" onClick={clearAll}
-            style={{ marginTop: 8 }}>Clear all</button>
+            style={{ marginTop: 8 }}>{t('clear_all')}</button>
         </aside>
 
         {/* Results */}
         <div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-            <span className="muted" style={{ fontSize: '0.85rem' }}>Sort by</span>
+            <span className="muted" style={{ fontSize: '0.85rem' }}>{t('sort_by')}</span>
             <select value={sort} onChange={(e) => setSort(e.target.value)}
               style={{ padding: '8px 12px', border: '1px solid var(--border)', fontFamily: 'var(--font-body)', background: 'var(--white)', color: 'var(--dark-gray)' }}>
-              {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+              {SORTS.map((s) => <option key={s.value} value={s.value}>{t(s.key)}</option>)}
             </select>
           </div>
 
           {isLoading ? (
             <div className="spinner" />
           ) : paintings.length === 0 ? (
-            <p className="muted center" style={{ padding: '48px 0' }}>No works match these filters.</p>
+            <p className="muted center" style={{ padding: '48px 0' }}>{t('no_results')}</p>
           ) : (
             <>
               <div className="grid grid--cards">
@@ -208,7 +210,7 @@ export default function Gallery() {
               <div className="center" style={{ marginTop: 40 }}>
                 {hasNextPage && (
                   <button className="btn btn--ghost" onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
-                    {isFetchingNextPage ? 'Loading…' : 'Load more works'}
+                    {isFetchingNextPage ? t('loading') : t('load_more')}
                   </button>
                 )}
               </div>
