@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Chart as ChartJS, CategoryScale, LinearScale, BarElement,
   PointElement, LineElement, ArcElement, Tooltip, Legend,
 } from 'chart.js';
 import { Bar, Line, Doughnut } from 'react-chartjs-2';
-import { analyticsApi, userApi, paintingApi } from '../api/endpoints.js';
+import { analyticsApi, userApi, paintingApi, artistApi } from '../api/endpoints.js';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, ArcElement, Tooltip, Legend);
 
@@ -19,7 +19,7 @@ const baseOpts = {
   scales: { x: { grid: { display: false } }, y: { grid: { color: '#eee' }, beginAtZero: true } },
 };
 
-const TABS = ['Overview', 'Paintings', 'Users', 'AI Logs'];
+const TABS = ['Overview', 'Paintings', 'Artists', 'Users', 'AI Logs'];
 
 export default function AdminDashboard() {
   const [tab, setTab] = useState('Overview');
@@ -48,6 +48,7 @@ export default function AdminDashboard() {
       <section className="section container">
         {tab === 'Overview' && <Overview />}
         {tab === 'Paintings' && <PaintingsTable />}
+        {tab === 'Artists' && <ArtistsTable />}
         {tab === 'Users' && <UsersTable />}
         {tab === 'AI Logs' && <AiLogs />}
       </section>
@@ -109,20 +110,93 @@ function Overview() {
 }
 
 function PaintingsTable() {
+  const qc = useQueryClient();
+  const [err, setErr] = useState('');
   const { data, isLoading } = useQuery({
     queryKey: ['admin', 'paintings'],
-    queryFn: () => paintingApi.list({ limit: 25, sort: 'newest' }),
+    queryFn: () => paintingApi.list({ limit: 50, sort: 'newest' }),
   });
+  const del = useMutation({
+    mutationFn: (id) => paintingApi.remove(id),
+    onSuccess: () => {
+      setErr('');
+      qc.invalidateQueries({ queryKey: ['admin', 'paintings'] });
+      qc.invalidateQueries({ queryKey: ['gallery'] });
+      qc.invalidateQueries({ queryKey: ['an'] });
+    },
+    onError: (e) => setErr(e?.response?.data?.message || 'Could not delete this painting.'),
+  });
+
+  const onDelete = (p) => {
+    if (window.confirm(`Delete "${p.title}"? This permanently removes the painting and cannot be undone.`)) {
+      del.mutate(p.id);
+    }
+  };
+
   if (isLoading) return <div className="spinner" />;
   return (
-    <Table head={['Title', 'Artist', 'Category', 'Style', 'Views']}>
-      {(data?.data || []).map((p) => (
-        <tr key={p.id}>
-          <Td>{p.title}</Td><Td>{p.artist?.name}</Td><Td>{p.category?.name}</Td>
-          <Td>{p.style?.name || '—'}</Td><Td>{p.viewCount?.toLocaleString()}</Td>
-        </tr>
-      ))}
-    </Table>
+    <>
+      {err && <div className="form-error" style={{ marginBottom: 16 }}>{err}</div>}
+      <Table head={['Title', 'Artist', 'Category', 'Style', 'Views', '']}>
+        {(data?.data || []).map((p) => (
+          <tr key={p.id}>
+            <Td>{p.title}</Td><Td>{p.artist?.name}</Td><Td>{p.category?.name}</Td>
+            <Td>{p.style?.name || '\u2014'}</Td><Td>{p.viewCount?.toLocaleString()}</Td>
+            <Td style={{ textAlign: 'right' }}>
+              <DeleteBtn onClick={() => onDelete(p)} busy={del.isPending && del.variables === p.id} />
+            </Td>
+          </tr>
+        ))}
+      </Table>
+    </>
+  );
+}
+
+function ArtistsTable() {
+  const qc = useQueryClient();
+  const [err, setErr] = useState('');
+  const { data, isLoading } = useQuery({
+    queryKey: ['admin', 'artists'],
+    queryFn: () => artistApi.list({ limit: 100 }),
+  });
+  const del = useMutation({
+    mutationFn: (id) => artistApi.remove(id),
+    onSuccess: () => {
+      setErr('');
+      qc.invalidateQueries({ queryKey: ['admin', 'artists'] });
+      qc.invalidateQueries({ queryKey: ['an'] });
+    },
+    onError: (e) => setErr(e?.response?.data?.message || 'Could not delete this artist.'),
+  });
+
+  const onDelete = (a) => {
+    if (window.confirm(`Delete artist "${a.name}"?`)) del.mutate(a.id);
+  };
+
+  if (isLoading) return <div className="spinner" />;
+  return (
+    <>
+      {err && <div className="form-error" style={{ marginBottom: 16 }}>{err}</div>}
+      <p className="muted" style={{ fontSize: '0.85rem', marginBottom: 16 }}>
+        An artist can only be deleted once none of their paintings remain.
+      </p>
+      <Table head={['Artist', 'Nationality', 'Paintings', '']}>
+        {(data?.data || []).map((a) => (
+          <tr key={a.id}>
+            <Td>{a.name}</Td>
+            <Td>{a.nationality || '\u2014'}</Td>
+            <Td>{a._count?.paintings ?? 0}</Td>
+            <Td style={{ textAlign: 'right' }}>
+              <DeleteBtn
+                onClick={() => onDelete(a)}
+                disabled={(a._count?.paintings ?? 0) > 0}
+                busy={del.isPending && del.variables === a.id}
+              />
+            </Td>
+          </tr>
+        ))}
+      </Table>
+    </>
   );
 }
 
@@ -155,7 +229,7 @@ function AiLogs() {
           <Td>{l.user?.email || 'guest'}</Td>
           <Td style={{ maxWidth: 240 }}>{truncate(l.prompt, 90)}</Td>
           <Td style={{ maxWidth: 280 }}>{truncate(l.response, 110)}</Td>
-          <Td>{l.tokensUsed ?? '—'}</Td>
+          <Td>{l.tokensUsed ?? '\u2014'}</Td>
           <Td>{new Date(l.createdAt).toLocaleString()}</Td>
         </tr>
       ))}
@@ -163,14 +237,28 @@ function AiLogs() {
   );
 }
 
-const truncate = (s, n) => (s && s.length > n ? `${s.slice(0, n)}…` : s || '');
+const truncate = (s, n) => (s && s.length > n ? `${s.slice(0, n)}\u2026` : s || '');
+
+function DeleteBtn({ onClick, disabled, busy }) {
+  return (
+    <button onClick={onClick} disabled={disabled || busy}
+      title={disabled ? 'Has paintings — cannot delete' : 'Delete'}
+      style={{
+        fontSize: '0.78rem', padding: '6px 12px', cursor: disabled || busy ? 'not-allowed' : 'pointer',
+        border: '1px solid #c0392b', background: 'transparent',
+        color: disabled ? 'var(--muted)' : '#c0392b',
+        borderColor: disabled ? 'var(--border)' : '#c0392b',
+        opacity: busy ? 0.6 : 1,
+      }}>{busy ? 'Deleting\u2026' : 'Delete'}</button>
+  );
+}
 
 function Metric({ label, value }) {
   return (
     <div style={{ border: '1px solid var(--border)', padding: '20px 22px' }}>
       <div className="muted" style={{ fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{label}</div>
       <div style={{ fontSize: '1.8rem', fontFamily: 'var(--font-display)', marginTop: 6 }}>
-        {value != null ? Number(value).toLocaleString() : '—'}
+        {value != null ? Number(value).toLocaleString() : '\u2014'}
       </div>
     </div>
   );
@@ -191,8 +279,8 @@ function Table({ head, children }) {
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
         <thead>
           <tr style={{ background: 'var(--light-gray)' }}>
-            {head.map((h) => (
-              <th key={h} style={{ textAlign: 'left', padding: '12px 16px', fontWeight: 600, fontSize: '0.74rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted)' }}>{h}</th>
+            {head.map((h, i) => (
+              <th key={i} style={{ textAlign: 'left', padding: '12px 16px', fontWeight: 600, fontSize: '0.74rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted)' }}>{h}</th>
             ))}
           </tr>
         </thead>

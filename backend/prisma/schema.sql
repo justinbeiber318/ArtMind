@@ -66,12 +66,15 @@ CREATE TABLE paintings (
   artist_id       INT NOT NULL,
   category_id     INT NOT NULL,
   style_id        INT,
+  uploaded_by_id  INT,
   CONSTRAINT fk_paint_artist   FOREIGN KEY (artist_id)   REFERENCES artists(id),
   CONSTRAINT fk_paint_category FOREIGN KEY (category_id) REFERENCES categories(id),
   CONSTRAINT fk_paint_style    FOREIGN KEY (style_id)    REFERENCES styles(id),
+  CONSTRAINT fk_paint_uploader FOREIGN KEY (uploaded_by_id) REFERENCES users(id),
   INDEX idx_paint_category (category_id),
   INDEX idx_paint_style (style_id),
   INDEX idx_paint_artist (artist_id),
+  INDEX idx_paint_uploader (uploaded_by_id),
   INDEX idx_paint_trending (trending_score)
 ) ENGINE=InnoDB;
 

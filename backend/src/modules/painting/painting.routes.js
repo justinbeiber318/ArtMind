@@ -2,12 +2,18 @@ import { Router } from 'express';
 import { paintingController } from './painting.controller.js';
 import { requireAuth, requireAdmin, optionalAuth } from '../../middleware/auth.js';
 import { validate } from '../../middleware/validate.js';
+import { upload } from '../../middleware/upload.js';
 import { aiLimiter } from '../../middleware/rateLimit.js';
 import { createSchema, updateSchema } from './painting.validation.js';
 
 const router = Router();
 
 router.get('/', paintingController.list);
+
+// Specific routes MUST come before the dynamic "/:slug" route.
+router.get('/mine', requireAuth, paintingController.mine);
+router.post('/upload', requireAuth, upload.single('image'), paintingController.uploadByUser);
+
 router.get('/:slug', optionalAuth, paintingController.detail);
 router.get('/:slug/ai-summary', aiLimiter, paintingController.aiSummary);
 router.get('/:id/similar', paintingController.similar);

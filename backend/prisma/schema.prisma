@@ -32,6 +32,7 @@ model User {
   recommendations Recommendation[]
   chatLogs      ChatLog[]
   uploadedImages UploadedImage[]
+  uploads       Painting[] @relation("UserUploads")
   collections   Collection[]
 
   @@map("users")
@@ -98,6 +99,8 @@ model Painting {
   category      Category  @relation(fields: [categoryId], references: [id])
   styleId       Int?      @map("style_id")
   style         Style?    @relation(fields: [styleId], references: [id])
+  uploadedById  Int?      @map("uploaded_by_id")
+  uploadedBy    User?     @relation("UserUploads", fields: [uploadedById], references: [id])
 
   favorites     Favorite[]
   viewHistory   ViewHistory[]
@@ -107,6 +110,7 @@ model Painting {
   @@index([categoryId])
   @@index([styleId])
   @@index([artistId])
+  @@index([uploadedById])
   @@index([trendingScore])
   @@map("paintings")
 }

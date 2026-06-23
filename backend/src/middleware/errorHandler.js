@@ -20,6 +20,9 @@ export function errorHandler(err, _req, res, _next) {
     } else if (err.code === 'P2025') {
       statusCode = 404;
       message = 'Record not found';
+    } else if (err.code === 'P2003') {
+      statusCode = 400;
+      message = 'This record is still referenced by others and cannot be deleted';
     }
   }
 

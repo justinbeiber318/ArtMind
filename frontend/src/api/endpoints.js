@@ -11,6 +11,10 @@ export const paintingApi = {
   detail: (slug) => unwrap(api.get(`/paintings/${slug}`)),
   similar: (id) => unwrap(api.get(`/paintings/${id}/similar`)),
   aiSummary: (slug) => unwrap(api.get(`/paintings/${slug}/ai-summary`)),
+  mine: () => unwrap(api.get('/paintings/mine')),
+  upload: (formData) => unwrap(api.post('/paintings/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })),
   create: (body) => unwrap(api.post('/paintings', body)),
   update: (id, body) => unwrap(api.patch(`/paintings/${id}`, body)),
   remove: (id) => unwrap(api.delete(`/paintings/${id}`)),
@@ -20,6 +24,7 @@ export const artistApi = {
   list: (params) => api.get('/artists', { params }).then((r) => r.data),
   popular: () => unwrap(api.get('/artists/popular')),
   detail: (slug) => unwrap(api.get(`/artists/${slug}`)),
+  remove: (id) => unwrap(api.delete(`/artists/${id}`)),
 };
 
 export const categoryApi = {

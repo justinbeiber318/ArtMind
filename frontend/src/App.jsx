@@ -13,6 +13,7 @@ import AIRecognition from './pages/AIRecognition.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Favorites from './pages/Favorites.jsx';
 import Profile from './pages/Profile.jsx';
+import Upload from './pages/Upload.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
 import AdminDashboard from './pages/AdminDashboard.jsx';
@@ -42,6 +43,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/dashboard" element={<Protected><Dashboard /></Protected>} />
+          <Route path="/upload" element={<Protected><Upload /></Protected>} />
           <Route path="/favorites" element={<Protected><Favorites /></Protected>} />
           <Route path="/profile" element={<Protected><Profile /></Protected>} />
           <Route path="/admin" element={<Protected admin><AdminDashboard /></Protected>} />

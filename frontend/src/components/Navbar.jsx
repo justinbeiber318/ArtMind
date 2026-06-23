@@ -76,9 +76,20 @@ export default function Navbar() {
               >
                 Dashboard
               </NavLink>
+              <NavLink
+                to="/upload"
+                ref={el => linksRef.current[links.length + 1] = el}
+                style={({ isActive }) => ({
+                  fontSize: '0.85rem',
+                  color: isActive ? 'var(--navy)' : 'var(--dark-gray)',
+                  opacity: 0,
+                })}
+              >
+                Upload
+              </NavLink>
               <NavLink 
                 to="/favorites" 
-                ref={el => linksRef.current[links.length + 1] = el}
+                ref={el => linksRef.current[links.length + 2] = el}
                 style={({ isActive }) => ({
                   fontSize: '0.85rem',
                   color: isActive ? 'var(--navy)' : 'var(--dark-gray)',
@@ -90,7 +101,7 @@ export default function Navbar() {
               {isAdmin && (
                 <NavLink 
                   to="/admin" 
-                  ref={el => linksRef.current[links.length + 2] = el}
+                  ref={el => linksRef.current[links.length + 3] = el}
                   style={({ isActive }) => ({
                     fontSize: '0.85rem',
                     color: isActive ? 'var(--navy)' : 'var(--dark-gray)',
@@ -100,7 +111,7 @@ export default function Navbar() {
                   Admin
                 </NavLink>
               )}
-              <div ref={el => linksRef.current[links.length + 3] = el} style={{ opacity: 0 }}>
+              <div ref={el => linksRef.current[links.length + 4] = el} style={{ opacity: 0 }}>
                 <button className="btn btn--ghost" style={{ padding: '8px 18px' }} onClick={handleLogout}>Sign out</button>
               </div>
             </>

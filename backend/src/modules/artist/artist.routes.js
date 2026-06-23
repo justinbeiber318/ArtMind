@@ -71,7 +71,12 @@ router.patch('/:id', requireAuth, requireAdmin, asyncHandler(async (req, res) =>
 }));
 
 router.delete('/:id', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
-  await prisma.artist.delete({ where: { id: Number(req.params.id) } });
+  const id = Number(req.params.id);
+  const count = await prisma.painting.count({ where: { artistId: id } });
+  if (count > 0) {
+    throw ApiError.badRequest(`Cannot delete this artist — ${count} painting(s) still reference them. Delete those paintings first.`);
+  }
+  await prisma.artist.delete({ where: { id } });
   res.json({ success: true, data: { message: 'Artist deleted' } });
 }));
 

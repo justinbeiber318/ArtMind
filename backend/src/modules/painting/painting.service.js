@@ -109,6 +109,51 @@ export const paintingService = {
     });
   },
 
+  async createUserUpload({
+    userId, title, description, artistName,
+    categoryId, styleId, medium, surface, year,
+    imageUrl, thumbnailUrl, dominantColors,
+  }) {
+    let artist = await prisma.artist.findFirst({ where: { name: artistName } });
+    if (!artist) {
+      const artistSlug = await uniqueSlug(artistName, (s) =>
+        prisma.artist.findUnique({ where: { slug: s } }).then(Boolean),
+      );
+      artist = await prisma.artist.create({ data: { name: artistName, slug: artistSlug } });
+    }
+
+    const slug = await uniqueSlug(title, (s) =>
+      prisma.painting.findUnique({ where: { slug: s } }).then(Boolean),
+    );
+
+    return prisma.painting.create({
+      data: {
+        title,
+        slug,
+        description,
+        imageUrl,
+        thumbnailUrl: thumbnailUrl || imageUrl,
+        medium: medium || null,
+        surface: surface || null,
+        year: year ? Number(year) : null,
+        dominantColors: dominantColors || [],
+        artistId: artist.id,
+        categoryId: Number(categoryId),
+        styleId: styleId ? Number(styleId) : null,
+        uploadedById: userId,
+      },
+      include: includeRefs,
+    });
+  },
+
+  async listByUploader(userId) {
+    return prisma.painting.findMany({
+      where: { uploadedById: userId },
+      orderBy: { createdAt: 'desc' },
+      include: includeRefs,
+    });
+  },
+
   async update(id, data) {
     return prisma.painting.update({ where: { id }, data, include: includeRefs });
   },
