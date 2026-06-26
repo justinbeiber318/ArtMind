@@ -67,7 +67,7 @@ export default function Upload() {
           <h1>Upload your artwork</h1>
           <p className="muted" style={{ marginTop: 8, maxWidth: 620 }}>
             Add a work to the Aurelis collection. We&apos;ll extract its color palette automatically
-            and list it in the gallery under your chosen artist and category.
+            and send it to the admin team for review before it appears in the public gallery.
           </p>
         </div>
       </div>
@@ -143,7 +143,7 @@ export default function Upload() {
             </div>
 
             <button className="btn btn--block" disabled={upload.isPending}>
-              {upload.isPending ? 'Uploading...' : 'Publish to gallery'}
+              {upload.isPending ? 'Uploading...' : 'Submit for admin review'}
             </button>
           </form>
         </div>

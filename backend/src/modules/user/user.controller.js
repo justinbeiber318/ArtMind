@@ -1,6 +1,8 @@
 import { userService } from './user.service.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { getPagination, buildMeta } from '../../utils/pagination.js';
+import { saveImage } from '../../utils/storage.js';
+import { ApiError } from '../../utils/ApiError.js';
 
 export const userController = {
   me: asyncHandler(async (req, res) => {
@@ -9,6 +11,17 @@ export const userController = {
 
   updateMe: asyncHandler(async (req, res) => {
     res.json({ success: true, data: await userService.updateProfile(req.user.id, req.body) });
+  }),
+
+  changePassword: asyncHandler(async (req, res) => {
+    await userService.changePassword(req.user.id, req.body);
+    res.json({ success: true, data: { message: 'Password updated' } });
+  }),
+
+  uploadAvatar: asyncHandler(async (req, res) => {
+    if (!req.file) throw ApiError.badRequest('No avatar uploaded (field name: "avatar")');
+    const { thumbnailUrl } = await saveImage(req.file.buffer, req.file.mimetype, req);
+    res.json({ success: true, data: await userService.updateAvatar(req.user.id, thumbnailUrl) });
   }),
 
   dashboard: asyncHandler(async (req, res) => {

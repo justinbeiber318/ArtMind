@@ -4,13 +4,14 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { useSelector } from 'react-redux';
 import { jsPDF } from 'jspdf';
 import { paintingApi, favoriteApi } from '../api/endpoints.js';
-import { selectIsAuthed } from '../features/auth/authSlice.js';
+import { selectIsAdmin, selectIsAuthed } from '../features/auth/authSlice.js';
 import PaintingCard from '../components/PaintingCard.jsx';
 import { gsap } from 'gsap';
 
 export default function PaintingDetails() {
   const { slug } = useParams();
   const authed = useSelector(selectIsAuthed);
+  const isAdmin = useSelector(selectIsAdmin);
   const [favorited, setFavorited] = useState(false);
   const [shareNote, setShareNote] = useState('');
 
@@ -157,13 +158,13 @@ export default function PaintingDetails() {
           )}
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 32 }}>
-            {authed ? (
+            {authed && !isAdmin ? (
               <button className="btn" onClick={() => favoriteMutation.mutate()} disabled={favoriteMutation.isPending}>
                 {favorited ? '♥ In favorites' : '♡ Add to favorites'}
               </button>
-            ) : (
+            ) : !authed ? (
               <Link to="/login" state={{ from: `/paintings/${slug}` }} className="btn">Sign in to favorite</Link>
-            )}
+            ) : null}
             <button className="btn btn--ghost" onClick={downloadPdf}>Download PDF</button>
             <button className="btn btn--ghost" onClick={share}>Share</button>
           </div>

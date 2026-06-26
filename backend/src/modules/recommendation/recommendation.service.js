@@ -1,5 +1,12 @@
 import { prisma } from '../../config/prisma.js';
 
+const publicPaintingWhere = {
+  OR: [
+    { uploadedById: null },
+    { featured: true },
+  ],
+};
+
 /**
  * RecommendationService
  * Hybrid recommender combining three signals:
@@ -78,7 +85,12 @@ export const recommendationService = {
 
     // Candidate pool: everything the user hasn't already engaged with.
     const candidates = await prisma.painting.findMany({
-      where: { id: { notIn: [...profile.seen] } },
+      where: {
+        AND: [
+          { id: { notIn: [...profile.seen] } },
+          publicPaintingWhere,
+        ],
+      },
       take: 400,
     });
 
@@ -122,7 +134,7 @@ export const recommendationService = {
 
   async getForUser(userId, limit = 12) {
     let recs = await prisma.recommendation.findMany({
-      where: { userId },
+      where: { userId, painting: publicPaintingWhere },
       orderBy: { score: 'desc' },
       take: limit,
       include: { painting: { include: { artist: true, style: true } } },
@@ -132,7 +144,7 @@ export const recommendationService = {
     if (recs.length === 0) {
       await this.rebuildForUser(userId);
       recs = await prisma.recommendation.findMany({
-        where: { userId }, orderBy: { score: 'desc' }, take: limit,
+        where: { userId, painting: publicPaintingWhere }, orderBy: { score: 'desc' }, take: limit,
         include: { painting: { include: { artist: true, style: true } } },
       });
     }
@@ -142,6 +154,7 @@ export const recommendationService = {
   // Anonymous / preview recommendations for the home page.
   async getTrendingPreview(limit = 6) {
     return prisma.painting.findMany({
+      where: publicPaintingWhere,
       orderBy: { trendingScore: 'desc' }, take: limit,
       include: { artist: true, style: true },
     });

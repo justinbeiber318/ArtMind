@@ -8,6 +8,7 @@ export const authApi = {
 
 export const paintingApi = {
   list: (params) => api.get('/paintings', { params }).then((r) => r.data),
+  adminList: (params) => api.get('/paintings/admin/all', { params }).then((r) => r.data),
   detail: (slug) => unwrap(api.get(`/paintings/${slug}`)),
   similar: (id) => unwrap(api.get(`/paintings/${id}/similar`)),
   aiSummary: (slug) => unwrap(api.get(`/paintings/${slug}/ai-summary`)),
@@ -24,12 +25,17 @@ export const artistApi = {
   list: (params) => api.get('/artists', { params }).then((r) => r.data),
   popular: () => unwrap(api.get('/artists/popular')),
   detail: (slug) => unwrap(api.get(`/artists/${slug}`)),
+  create: (body) => unwrap(api.post('/artists', body)),
+  update: (id, body) => unwrap(api.patch(`/artists/${id}`, body)),
   remove: (id) => unwrap(api.delete(`/artists/${id}`)),
 };
 
 export const categoryApi = {
   list: () => unwrap(api.get('/categories')),
   styles: () => unwrap(api.get('/categories/styles')),
+  create: (body) => unwrap(api.post('/categories', body)),
+  createStyle: (body) => unwrap(api.post('/categories/styles', body)),
+  remove: (id) => unwrap(api.delete(`/categories/${id}`)),
 };
 
 export const favoriteApi = {
@@ -63,8 +69,14 @@ export const recognitionApi = {
 export const userApi = {
   me: () => unwrap(api.get('/users/me')),
   update: (body) => unwrap(api.patch('/users/me', body)),
+  uploadAvatar: (formData) => unwrap(api.post('/users/me/avatar', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })),
+  changePassword: (body) => unwrap(api.patch('/users/me/password', body)),
   dashboard: () => unwrap(api.get('/users/dashboard')),
   list: (params) => api.get('/users', { params }).then((r) => r.data),
+  setRole: (id, role) => unwrap(api.patch(`/users/${id}/role`, { role })),
+  remove: (id) => unwrap(api.delete(`/users/${id}`)),
 };
 
 export const analyticsApi = {

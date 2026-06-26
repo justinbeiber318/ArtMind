@@ -45,109 +45,93 @@ export default function Navbar() {
     localStorage.setItem('language', lang);
   };
 
+  const navLinkStyle = ({ isActive }) => ({
+    color: isActive ? 'var(--navy)' : 'var(--dark-gray)',
+    borderBottomColor: isActive ? 'var(--navy)' : 'transparent',
+    opacity: 0,
+  });
+
   return (
-    <header style={{ borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, background: 'var(--white)', zIndex: 50 }}>
-      <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 72 }}>
+    <header className="site-header">
+      <div className="container site-header__inner">
         <Link
           ref={logoRef}
           to="/"
-          style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: '1.3rem', letterSpacing: '0.04em', opacity: 0 }}
+          className="site-header__logo"
+          style={{ opacity: 0 }}
         >
           AURE<span style={{ color: 'var(--navy)' }}>LIS</span>
         </Link>
 
-        <nav style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
+        <nav className="site-header__nav" aria-label="Primary navigation">
           {links.map((link, index) => (
             <NavLink
               key={link.to}
               to={link.to}
               ref={(el) => (linksRef.current[index] = el)}
-              style={({ isActive }) => ({
-                fontSize: '0.85rem',
-                letterSpacing: '0.04em',
-                color: isActive ? 'var(--navy)' : 'var(--dark-gray)',
-                borderBottom: isActive ? '2px solid var(--navy)' : '2px solid transparent',
-                paddingBottom: 4,
-                opacity: 0,
-              })}
+              className="site-header__link"
+              style={navLinkStyle}
             >
               {link.label}
             </NavLink>
           ))}
 
-          {user ? (
+          {user && !isAdmin && (
             <>
               <NavLink
                 to="/dashboard"
                 ref={(el) => (linksRef.current[links.length] = el)}
-                style={({ isActive }) => ({
-                  fontSize: '0.85rem',
-                  color: isActive ? 'var(--navy)' : 'var(--dark-gray)',
-                  opacity: 0,
-                })}
+                className="site-header__link"
+                style={navLinkStyle}
               >
                 {t('dashboard')}
               </NavLink>
               <NavLink
-<<<<<<< HEAD
                 to="/upload"
-                ref={el => linksRef.current[links.length + 1] = el}
-                style={({ isActive }) => ({
-                  fontSize: '0.85rem',
-                  color: isActive ? 'var(--navy)' : 'var(--dark-gray)',
-                  opacity: 0,
-                })}
-              >
-                Upload
-              </NavLink>
-              <NavLink 
-                to="/favorites" 
-                ref={el => linksRef.current[links.length + 2] = el}
-=======
-                to="/favorites"
                 ref={(el) => (linksRef.current[links.length + 1] = el)}
->>>>>>> 60bfa34 (Language)
-                style={({ isActive }) => ({
-                  fontSize: '0.85rem',
-                  color: isActive ? 'var(--navy)' : 'var(--dark-gray)',
-                  opacity: 0,
-                })}
+                className="site-header__link"
+                style={navLinkStyle}
+              >
+                {t('upload')}
+              </NavLink>
+              <NavLink
+                to="/favorites"
+                ref={(el) => (linksRef.current[links.length + 2] = el)}
+                className="site-header__link"
+                style={navLinkStyle}
               >
                 {t('favorites')}
               </NavLink>
-              {isAdmin && (
-<<<<<<< HEAD
-                <NavLink 
-                  to="/admin" 
-                  ref={el => linksRef.current[links.length + 3] = el}
-=======
-                <NavLink
-                  to="/admin"
-                  ref={(el) => (linksRef.current[links.length + 2] = el)}
->>>>>>> 60bfa34 (Language)
-                  style={({ isActive }) => ({
-                    fontSize: '0.85rem',
-                    color: isActive ? 'var(--navy)' : 'var(--dark-gray)',
-                    opacity: 0,
-                  })}
-                >
-                  {t('admin')}
-                </NavLink>
-              )}
-<<<<<<< HEAD
-              <div ref={el => linksRef.current[links.length + 4] = el} style={{ opacity: 0 }}>
-                <button className="btn btn--ghost" style={{ padding: '8px 18px' }} onClick={handleLogout}>Sign out</button>
-=======
-              <div ref={(el) => (linksRef.current[links.length + 3] = el)} style={{ opacity: 0 }}>
-                <button className="btn btn--ghost" style={{ padding: '8px 18px' }} onClick={handleLogout}>
-                  {t('logout')}
-                </button>
->>>>>>> 60bfa34 (Language)
-              </div>
+              <NavLink
+                to="/profile"
+                ref={(el) => (linksRef.current[links.length + 3] = el)}
+                className="site-header__link"
+                style={navLinkStyle}
+              >
+                {t('profile')}
+              </NavLink>
             </>
+          )}
+          {isAdmin && (
+            <NavLink
+              to="/admin/dashboard"
+              ref={(el) => (linksRef.current[links.length] = el)}
+              className="site-header__link"
+              style={navLinkStyle}
+            >
+              {t('admin')}
+            </NavLink>
+          )}
+        </nav>
+
+        <div className="site-header__actions">
+          {user ? (
+            <div ref={(el) => (linksRef.current[links.length + 4] = el)} style={{ opacity: 0 }}>
+              <button className="btn btn--ghost site-header__button" onClick={handleLogout}>{t('logout')}</button>
+            </div>
           ) : (
             <div ref={(el) => (linksRef.current[links.length] = el)} style={{ opacity: 0 }}>
-              <Link to="/login" className="btn" style={{ padding: '8px 22px' }}>
+              <Link to="/login" className="btn site-header__button">
                 {t('login')}
               </Link>
             </div>
@@ -156,15 +140,15 @@ export default function Navbar() {
           <select
             value={i18n.language}
             onChange={(e) => changeLanguage(e.target.value)}
-            style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid #ddd', cursor: 'pointer' }}
+            className="site-header__language"
           >
-            <option value="vi">🇻🇳 VI</option>
-            <option value="en">🇬🇧 EN</option>
-            <option value="fr">🇫🇷 FR</option>
-            <option value="ja">🇯🇵 JA</option>
-            <option value="ko">🇰🇷 KO</option>
+            <option value="vi">VI</option>
+            <option value="en">EN</option>
+            <option value="fr">FR</option>
+            <option value="ja">JA</option>
+            <option value="ko">KO</option>
           </select>
-        </nav>
+        </div>
       </div>
     </header>
   );

@@ -5,7 +5,7 @@ import { chatbotApi } from '../api/endpoints.js';
 export default function ChatbotWidget() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: 'Hello — I\'m the Aurelis concierge. Ask me about a movement, an artist, or how to find a piece.' },
+    { role: 'assistant', content: 'I am your AI Art Assistant. I can help you discover artworks, explore painting styles, learn about artists, and find pieces that match your interests.' },
   ]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -25,7 +25,7 @@ export default function ChatbotWidget() {
       const { reply } = await chatbotApi.send(text, history);
       setMessages((m) => [...m, { role: 'assistant', content: reply }]);
     } catch (e) {
-      setMessages((m) => [...m, { role: 'assistant', content: `Sorry — ${e.message}` }]);
+      setMessages((m) => [...m, { role: 'assistant', content: `Sorry - ${e.message}` }]);
     } finally {
       setBusy(false);
     }
@@ -36,17 +36,13 @@ export default function ChatbotWidget() {
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label="Open art concierge"
-        style={{
-          position: 'fixed', bottom: 28, right: 28, width: 64, height: 64,
-          background: 'var(--navy)', border: 'none', cursor: 'pointer',
-          borderRadius: '50%', zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 6px 24px rgba(212,175,95,0.35)',
-        }}
+        className="chatbot-launcher"
       >
-        {open
-          ? <span style={{ fontSize: '1.3rem', color: 'var(--gold)', fontFamily: 'var(--font-display)', lineHeight: 1 }}>✕</span>
-          : <img src="/chatbot.png" alt="chatbot" style={{ width: 46, height: 46, objectFit: 'contain', display: 'block' }} />
-        }
+        {open ? (
+          <span className="chatbot-launcher__close">×</span>
+        ) : (
+          <img src="/chatbot-icon.svg" alt="" className="chatbot-launcher__icon" />
+        )}
       </button>
 
       <AnimatePresence>
@@ -56,37 +52,34 @@ export default function ChatbotWidget() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.97 }}
             transition={{ duration: 0.2 }}
-            style={{
-              position: 'fixed', bottom: 100, right: 28, width: 360, maxWidth: 'calc(100vw - 40px)',
-              height: 480, background: 'var(--light-gray)', border: '1px solid var(--border)', zIndex: 60,
-              display: 'flex', flexDirection: 'column', boxShadow: '0 10px 40px rgba(0,0,0,0.45)',
-            }}
+            className="chatbot-panel"
           >
-            <div style={{ background: 'var(--navy)', color: '#000', padding: '14px 18px', fontFamily: 'var(--font-display)', fontWeight: 600 }}>
-              Aurelis Concierge
+            <div className="chatbot-panel__header">
+              <div>
+                <div className="chatbot-panel__eyebrow">Aurelis</div>
+                <div className="chatbot-panel__title">Art Concierge</div>
+              </div>
+              <span className="chatbot-panel__status">Online</span>
             </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+            <div className="chatbot-panel__messages">
               {messages.map((m, i) => (
-                <div key={i} style={{
-                  alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
-                  background: m.role === 'user' ? 'var(--navy)' : 'var(--white)',
-                  color: m.role === 'user' ? '#000' : 'var(--dark-gray)',
-                  padding: '10px 14px', fontSize: '0.88rem', maxWidth: '82%',
-                  border: '1px solid var(--border)',
-                }}>{m.content}</div>
+                <div key={i} className={`chatbot-message chatbot-message--${m.role}`}>
+                  {m.content}
+                </div>
               ))}
-              {busy && <div className="muted" style={{ fontSize: '0.8rem' }}>Thinking…</div>}
+              {busy && <div className="chatbot-thinking">Thinking...</div>}
               <div ref={endRef} />
             </div>
-            <div style={{ display: 'flex', borderTop: '1px solid var(--border)' }}>
+
+            <div className="chatbot-panel__composer">
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && send()}
-                placeholder="Ask about art…"
-                style={{ flex: 1, border: 'none', padding: '14px', fontFamily: 'var(--font-body)', outline: 'none', background: 'var(--white)', color: 'var(--dark-gray)' }}
+                placeholder="Ask about art..."
               />
-              <button onClick={send} disabled={busy} className="btn" style={{ borderRadius: 0 }}>Send</button>
+              <button onClick={send} disabled={busy}>Send</button>
             </div>
           </motion.div>
         )}

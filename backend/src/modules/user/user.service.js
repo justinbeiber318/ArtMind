@@ -1,5 +1,6 @@
 import { prisma } from '../../config/prisma.js';
 import { ApiError } from '../../utils/ApiError.js';
+import { hashPassword, verifyPassword } from '../../utils/password.js';
 
 const safeSelect = {
   id: true, email: true, name: true, avatarUrl: true,
@@ -19,6 +20,25 @@ export const userService = {
       data: { name: data.name, bio: data.bio, avatarUrl: data.avatarUrl },
       select: safeSelect,
     });
+  },
+
+  async updateAvatar(userId, avatarUrl) {
+    return prisma.user.update({
+      where: { id: userId },
+      data: { avatarUrl },
+      select: safeSelect,
+    });
+  },
+
+  async changePassword(userId, { currentPassword, newPassword }) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw ApiError.notFound('User not found');
+
+    const ok = await verifyPassword(currentPassword, user.passwordHash);
+    if (!ok) throw ApiError.badRequest('Current password is incorrect');
+
+    const passwordHash = await hashPassword(newPassword);
+    await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
   },
 
   // Aggregates everything the user dashboard needs in one round trip.

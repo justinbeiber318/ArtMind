@@ -6,8 +6,33 @@ const SYSTEM_PROMPT = `You are the Aurelis gallery concierge — a knowledgeable
 You help visitors with: explanations of artworks and movements, artist biographies,
 style descriptions, collection suggestions, and navigating the Aurelis website
 (Gallery, AI Search, AI Recognition, Favorites, Dashboard pages).
+Detect the visitor's language from their latest message and reply in that same
+language. If the latest message is too short to identify, use the most recent
+user messages as context. Do not translate artwork names, artist names, or
+Aurelis page names unless a natural translation exists in that language.
 Stay focused on visual art. Be warm but never verbose. If asked something outside
 art or the gallery, gently steer back.`;
+
+function detectLanguageHint(message, history = []) {
+  const latestUserMessages = [
+    ...history.filter((m) => m.role === 'user').slice(-2).map((m) => m.content),
+    message,
+  ].join('\n').toLowerCase();
+
+  if (/[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(latestUserMessages)) {
+    return 'Vietnamese';
+  }
+  if (/\b(tôi|toi|ban|bạn|mình|minh|hay|la|là|cua|của|tranh|nghe thuat|nghệ thuật|tieng viet|tiếng việt)\b/.test(latestUserMessages)) {
+    return 'Vietnamese';
+  }
+  if (/[\u3040-\u30ff]/.test(latestUserMessages)) return 'Japanese';
+  if (/[\uac00-\ud7af]/.test(latestUserMessages)) return 'Korean';
+  if (/[àâçéèêëîïôûùüÿœæ]/i.test(latestUserMessages)) return 'French';
+  if (/\b(francais|français|bonjour|merci|tableau|peinture|artiste)\b/.test(latestUserMessages)) {
+    return 'French';
+  }
+  return null;
+}
 
 // Lazily create the OpenAI client so the app still boots without a key
 // (chatbot endpoints then return a clear error instead of crashing on import).
@@ -26,26 +51,42 @@ async function getClient() {
 export const chatbotService = {
   async chat({ message, history = [], userId }) {
     const client = await getClient();
+    const languageHint = detectLanguageHint(message, history);
+    const systemPrompt = languageHint
+      ? `${SYSTEM_PROMPT}\n\nThe visitor's current language appears to be ${languageHint}. Reply in ${languageHint}.`
+      : SYSTEM_PROMPT;
 
     const messages = [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: systemPrompt },
       ...history.slice(-8).map((m) => ({ role: m.role, content: m.content })),
       { role: 'user', content: message },
     ];
 
-    const completion = await client.chat.completions.create({
-      model: env.openai.model,
-      temperature: 0.6,
-      max_tokens: 500,
-      messages,
-    });
+    let completion;
+    try {
+      completion = await client.chat.completions.create({
+        model: env.openai.model,
+        temperature: 0.6,
+        max_tokens: 500,
+        messages,
+      });
+    } catch (err) {
+      throw new ApiError(502, `AI provider error: ${err.message}`);
+    }
 
-    const reply = completion.choices[0].message.content.trim();
+    const reply = completion.choices?.[0]?.message?.content?.trim();
+    if (!reply) {
+      throw new ApiError(502, 'AI provider returned an empty chatbot response');
+    }
     const tokensUsed = completion.usage?.total_tokens ?? null;
 
-    await prisma.chatLog.create({
-      data: { userId: userId ?? null, prompt: message, response: reply, tokensUsed },
-    });
+    try {
+      await prisma.chatLog.create({
+        data: { userId: userId ?? null, prompt: message, response: reply, tokensUsed },
+      });
+    } catch (err) {
+      console.error('Failed to save chatbot log', err);
+    }
 
     return { reply, tokensUsed };
   },

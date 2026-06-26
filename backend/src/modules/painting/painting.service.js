@@ -25,6 +25,24 @@ function buildWhere(q) {
   return where;
 }
 
+function publicVisibilityWhere() {
+  return {
+    OR: [
+      { uploadedById: null },
+      { featured: true },
+    ],
+  };
+}
+
+function buildPublicWhere(query) {
+  return {
+    AND: [
+      buildWhere(query),
+      publicVisibilityWhere(),
+    ],
+  };
+}
+
 function buildOrderBy(sort) {
   switch (sort) {
     case 'popular': return { viewCount: 'desc' };
@@ -36,6 +54,19 @@ function buildOrderBy(sort) {
 
 export const paintingService = {
   async list(query, { skip, take }) {
+    const where = buildPublicWhere(query);
+    const [items, total] = await Promise.all([
+      prisma.painting.findMany({
+        where, skip, take,
+        orderBy: buildOrderBy(query.sort),
+        include: includeRefs,
+      }),
+      prisma.painting.count({ where }),
+    ]);
+    return { items, total };
+  },
+
+  async listAdmin(query, { skip, take }) {
     const where = buildWhere(query);
     const [items, total] = await Promise.all([
       prisma.painting.findMany({
@@ -48,21 +79,27 @@ export const paintingService = {
     return { items, total };
   },
 
-  async getBySlug(slug, viewerId) {
+  async getBySlug(slug, viewer) {
     const painting = await prisma.painting.findUnique({
       where: { slug },
       include: includeRefs,
     });
     if (!painting) throw ApiError.notFound('Painting not found');
 
+    const isPendingUserUpload = painting.uploadedById && !painting.featured;
+    const canViewPending = viewer?.role === 'ADMIN' || viewer?.id === painting.uploadedById;
+    if (isPendingUserUpload && !canViewPending) {
+      throw ApiError.notFound('Painting not found');
+    }
+
     // Atomic view increment; record history for signed-in viewers.
     await prisma.painting.update({
       where: { id: painting.id },
       data: { viewCount: { increment: 1 } },
     });
-    if (viewerId) {
+    if (viewer?.id) {
       await prisma.viewHistory.create({
-        data: { userId: viewerId, paintingId: painting.id },
+        data: { userId: viewer.id, paintingId: painting.id },
       });
     }
     painting.viewCount += 1;
@@ -77,8 +114,11 @@ export const paintingService = {
 
     const candidates = await prisma.painting.findMany({
       where: {
-        id: { not: paintingId },
-        OR: [{ styleId: source.styleId }, { categoryId: source.categoryId }],
+        AND: [
+          { id: { not: paintingId } },
+          { OR: [{ styleId: source.styleId }, { categoryId: source.categoryId }] },
+          publicVisibilityWhere(),
+        ],
       },
       include: includeRefs,
       take: 40,

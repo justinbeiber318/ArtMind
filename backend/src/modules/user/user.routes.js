@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { userController } from './user.controller.js';
-import { requireAuth, requireAdmin } from '../../middleware/auth.js';
+import { requireAuth, requireAdmin, requireUser } from '../../middleware/auth.js';
 import { validate } from '../../middleware/validate.js';
+import { upload } from '../../middleware/upload.js';
 
 const router = Router();
 
@@ -14,10 +15,19 @@ const updateSchema = z.object({
   }),
 });
 
+const passwordSchema = z.object({
+  body: z.object({
+    currentPassword: z.string().min(1),
+    newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+  }),
+});
+
 router.use(requireAuth);
 router.get('/me', userController.me);
-router.patch('/me', validate(updateSchema), userController.updateMe);
-router.get('/dashboard', userController.dashboard);
+router.patch('/me', requireUser, validate(updateSchema), userController.updateMe);
+router.post('/me/avatar', requireUser, upload.single('avatar'), userController.uploadAvatar);
+router.patch('/me/password', requireUser, validate(passwordSchema), userController.changePassword);
+router.get('/dashboard', requireUser, userController.dashboard);
 
 // admin
 router.get('/', requireAdmin, userController.list);

@@ -18,21 +18,23 @@ import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
 import AdminDashboard from './pages/AdminDashboard.jsx';
 
-function Protected({ children, admin }) {
+function Protected({ children, admin, userOnly }) {
   const authed = useSelector(selectIsAuthed);
   const isAdmin = useSelector(selectIsAdmin);
   if (!authed) return <Navigate to="/login" replace />;
   if (admin && !isAdmin) return <Navigate to="/" replace />;
+  if (userOnly && isAdmin) return <Navigate to="/admin/dashboard" replace />;
   return children;
 }
 
 export default function App() {
   const location = useLocation();
   const isHome = location.pathname === '/';
+  const isAdminArea = location.pathname.startsWith('/admin');
 
   return (
     <>
-      {!isHome && <Navbar />}
+      {!isHome && !isAdminArea && <Navbar />}
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
@@ -42,16 +44,17 @@ export default function App() {
           <Route path="/ai-recognition" element={<AIRecognition />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/dashboard" element={<Protected><Dashboard /></Protected>} />
-          <Route path="/upload" element={<Protected><Upload /></Protected>} />
-          <Route path="/favorites" element={<Protected><Favorites /></Protected>} />
-          <Route path="/profile" element={<Protected><Profile /></Protected>} />
-          <Route path="/admin" element={<Protected admin><AdminDashboard /></Protected>} />
+          <Route path="/dashboard" element={<Protected userOnly><Dashboard /></Protected>} />
+          <Route path="/upload" element={<Protected userOnly><Upload /></Protected>} />
+          <Route path="/favorites" element={<Protected userOnly><Favorites /></Protected>} />
+          <Route path="/profile" element={<Protected userOnly><Profile /></Protected>} />
+          <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+          <Route path="/admin/dashboard" element={<Protected admin><AdminDashboard /></Protected>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
-      {!isHome && <Footer />}
-      {!isHome && <ChatbotWidget />}
+      {!isHome && !isAdminArea && <Footer />}
+      {!isHome && !isAdminArea && <ChatbotWidget />}
     </>
   );
 }

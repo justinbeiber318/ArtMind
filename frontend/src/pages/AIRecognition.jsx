@@ -119,7 +119,7 @@ function Stat({ label, value }) {
   return (
     <div style={{ border: '1px solid var(--border)', padding: '16px 18px' }}>
       <div className="muted" style={{ fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{label}</div>
-      <div style={{ fontSize: '1.25rem', fontFamily: 'var(--font-display)', marginTop: 4 }}>{value}</div>
+      <div style={{ fontSize: '1.25rem', fontWeight: 600, marginTop: 4 }}>{value}</div>
     </div>
   );
 }

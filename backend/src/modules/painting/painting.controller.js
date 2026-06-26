@@ -13,8 +13,14 @@ export const paintingController = {
     res.json({ success: true, data: items, meta: buildMeta(page, limit, total) });
   }),
 
+  adminList: asyncHandler(async (req, res) => {
+    const { page, limit, skip, take } = getPagination(req.query);
+    const { items, total } = await paintingService.listAdmin(req.query, { skip, take });
+    res.json({ success: true, data: items, meta: buildMeta(page, limit, total) });
+  }),
+
   detail: asyncHandler(async (req, res) => {
-    const painting = await paintingService.getBySlug(req.params.slug, req.user?.id);
+    const painting = await paintingService.getBySlug(req.params.slug, req.user);
     res.json({ success: true, data: painting });
   }),
 

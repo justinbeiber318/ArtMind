@@ -36,3 +36,10 @@ export function requireAdmin(req, _res, next) {
   }
   return next();
 }
+
+export function requireUser(req, _res, next) {
+  if (req.user?.role === 'ADMIN') {
+    return next(ApiError.forbidden('User feature is not available for admin accounts'));
+  }
+  return next();
+}

@@ -23,7 +23,7 @@ export default function Login() {
     try {
       const { user, accessToken } = await authApi.login(form);
       dispatch(setCredentials({ user, accessToken }));
-      navigate(redirectTo, { replace: true });
+      navigate(user.role === 'ADMIN' ? '/admin/dashboard' : redirectTo, { replace: true });
     } catch (err) {
       setError(err?.response?.data?.message || 'Unable to sign in. Check your credentials.');
     } finally {
@@ -33,9 +33,9 @@ export default function Login() {
 
   return (
     <section className="section">
-      <div className="container" style={{ maxWidth: 420 }}>
+      <div className="container auth-panel">
         <div className="eyebrow">Welcome back</div>
-        <h2 style={{ marginBottom: 28 }}>Sign in to Aurelis</h2>
+        <h2>Sign in to Aurelis</h2>
 
         {error && <div className="form-error">{error}</div>}
 
@@ -55,11 +55,8 @@ export default function Login() {
           </button>
         </form>
 
-        <p className="muted" style={{ marginTop: 20, fontSize: '0.9rem' }}>
+        <p className="muted auth-panel__note">
           New to Aurelis? <Link to="/register" style={{ color: 'var(--navy)' }}>Create an account</Link>
-        </p>
-        <p className="muted" style={{ marginTop: 8, fontSize: '0.8rem' }}>
-          Demo: demo@artmind.test / Demo1234
         </p>
       </div>
     </section>

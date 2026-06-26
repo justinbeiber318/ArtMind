@@ -1,11 +1,12 @@
 import { Router } from 'express';
 import { prisma } from '../../config/prisma.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
-import { requireAuth } from '../../middleware/auth.js';
+import { requireAuth, requireUser } from '../../middleware/auth.js';
 import { recommendationService } from '../recommendation/recommendation.service.js';
 
 const router = Router();
 router.use(requireAuth);
+router.use(requireUser);
 
 router.get('/', asyncHandler(async (req, res) => {
   const favorites = await prisma.favorite.findMany({
