@@ -22,6 +22,26 @@ const passwordSchema = z.object({
   }),
 });
 
+const adminUserSchema = z.object({
+  body: z.object({
+    name: z.string().min(2).max(80),
+    email: z.string().email(),
+    password: z.string().min(8).optional(),
+    avatarUrl: z.string().url().optional().or(z.literal('')),
+    bio: z.string().max(2000).optional(),
+    role: z.enum(['USER', 'ADMIN']).optional(),
+    status: z.enum(['Active', 'Blocked']).optional(),
+  }),
+});
+
+const adminUserUpdateSchema = z.object({
+  body: adminUserSchema.shape.body.partial(),
+});
+
+const statusSchema = z.object({
+  body: z.object({ status: z.enum(['Active', 'Blocked']) }),
+});
+
 router.use(requireAuth);
 router.get('/me', userController.me);
 router.patch('/me', requireUser, validate(updateSchema), userController.updateMe);
@@ -31,7 +51,10 @@ router.get('/dashboard', requireUser, userController.dashboard);
 
 // admin
 router.get('/', requireAdmin, userController.list);
+router.post('/', requireAdmin, validate(adminUserSchema), userController.create);
+router.patch('/:id', requireAdmin, validate(adminUserUpdateSchema), userController.update);
 router.patch('/:id/role', requireAdmin, userController.setRole);
+router.patch('/:id/status', requireAdmin, validate(statusSchema), userController.setStatus);
 router.delete('/:id', requireAdmin, userController.remove);
 
 export default router;

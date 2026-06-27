@@ -37,6 +37,7 @@ export const authService = {
   async login({ email, password }) {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) throw ApiError.unauthorized('Invalid credentials');
+    if (user.refreshToken === '__BLOCKED__') throw ApiError.forbidden('Account is blocked');
 
     const ok = await verifyPassword(password, user.passwordHash);
     if (!ok) throw ApiError.unauthorized('Invalid credentials');
@@ -59,6 +60,7 @@ export const authService = {
     }
     const user = await prisma.user.findUnique({ where: { id: decoded.id } });
     // Reject if the stored token doesn't match — handles logout / rotation / theft.
+    if (user?.refreshToken === '__BLOCKED__') throw ApiError.forbidden('Account is blocked');
     if (!user || user.refreshToken !== refreshToken) {
       throw ApiError.unauthorized('Refresh token revoked');
     }

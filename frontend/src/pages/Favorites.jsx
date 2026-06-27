@@ -1,12 +1,20 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { favoriteApi } from '../api/endpoints.js';
 import PaintingCard from '../components/PaintingCard.jsx';
 
 export default function Favorites() {
+  const qc = useQueryClient();
   const { data: favorites = [], isLoading } = useQuery({
     queryKey: ['favorites'],
     queryFn: favoriteApi.list,
+  });
+  const removeFavorite = useMutation({
+    mutationFn: (paintingId) => favoriteApi.toggle(paintingId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['favorites'] });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
+    },
   });
 
   return (
@@ -28,7 +36,19 @@ export default function Favorites() {
           </div>
         ) : (
           <div className="grid grid--cards">
-            {favorites.map((p, i) => <PaintingCard key={p.id} painting={p} index={i} />)}
+            {favorites.map((p, i) => (
+              <div key={p.id} className="favorite-card">
+                <PaintingCard painting={p} index={i} />
+                <button
+                  type="button"
+                  className="btn btn--ghost favorite-card__remove"
+                  onClick={() => removeFavorite.mutate(p.id)}
+                  disabled={removeFavorite.isPending}
+                >
+                  Remove favorite
+                </button>
+              </div>
+            ))}
           </div>
         )}
       </section>

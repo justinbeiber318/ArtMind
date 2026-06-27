@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
 export default function PaintingCard({ painting, index = 0 }) {
+  const tag = painting.style?.name || painting.category?.name;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -23,7 +25,7 @@ export default function PaintingCard({ painting, index = 0 }) {
           <h4 style={{ fontSize: '1rem', fontWeight: 500 }}>{painting.title}</h4>
           <p className="muted" style={{ fontSize: '0.85rem' }}>{painting.artist?.name}</p>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-            <span className="tag">{painting.style?.name || painting.category?.name}</span>
+            {tag ? <span className="tag">{tag}</span> : <span />}
             <span className="muted" style={{ fontSize: '0.78rem' }}>{painting.viewCount?.toLocaleString()} views</span>
           </div>
         </div>

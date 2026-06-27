@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
-import { paintingApi, recognitionApi, userApi } from '../api/endpoints.js';
+import { favoriteApi, paintingApi, recognitionApi, userApi } from '../api/endpoints.js';
 import { selectUser } from '../features/auth/authSlice.js';
 import PaintingCard from '../components/PaintingCard.jsx';
 
@@ -23,6 +23,13 @@ export default function Dashboard() {
   const deleteRecognition = useMutation({
     mutationFn: (id) => recognitionApi.remove(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['recognition-history'] }),
+  });
+  const removeFavorite = useMutation({
+    mutationFn: (paintingId) => favoriteApi.toggle(paintingId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
+      qc.invalidateQueries({ queryKey: ['favorites'] });
+    },
   });
 
   if (isLoading) return <div className="spinner" />;
@@ -92,6 +99,16 @@ export default function Dashboard() {
               empty="You haven't saved any favorites."
               link="/favorites"
               linkLabel="View all"
+              renderAction={(painting) => (
+                <button
+                  type="button"
+                  className="btn btn--ghost favorite-card__remove"
+                  onClick={() => removeFavorite.mutate(painting.id)}
+                  disabled={removeFavorite.isPending}
+                >
+                  Remove favorite
+                </button>
+              )}
             />
           </section>
 
@@ -202,7 +219,7 @@ function RecognitionHistory({ items, isLoading, onDelete, isDeleting }) {
   );
 }
 
-function Row({ title, items, empty, link, linkLabel }) {
+function Row({ title, items, empty, link, linkLabel, renderAction }) {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 18 }}>
@@ -213,7 +230,12 @@ function Row({ title, items, empty, link, linkLabel }) {
         <p className="muted">{empty}</p>
       ) : (
         <div className="grid grid--cards">
-          {items.slice(0, 4).map((p, i) => <PaintingCard key={p.id} painting={p} index={i} />)}
+          {items.slice(0, 4).map((p, i) => (
+            <div key={p.id} className={renderAction ? 'favorite-card' : undefined}>
+              <PaintingCard painting={p} index={i} />
+              {renderAction?.(p)}
+            </div>
+          ))}
         </div>
       )}
     </div>

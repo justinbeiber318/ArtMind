@@ -4,30 +4,38 @@ import { hashPassword, verifyPassword } from '../../utils/password.js';
 
 const safeSelect = {
   id: true, email: true, name: true, avatarUrl: true,
-  bio: true, role: true, createdAt: true,
+  bio: true, role: true, refreshToken: true, createdAt: true,
 };
+
+function presentUser(user) {
+  if (!user) return user;
+  const { refreshToken, ...rest } = user;
+  return { ...rest, status: refreshToken === '__BLOCKED__' ? 'Blocked' : 'Active' };
+}
 
 export const userService = {
   async getProfile(userId) {
     const user = await prisma.user.findUnique({ where: { id: userId }, select: safeSelect });
     if (!user) throw ApiError.notFound('User not found');
-    return user;
+    return presentUser(user);
   },
 
   async updateProfile(userId, data) {
-    return prisma.user.update({
+    const user = await prisma.user.update({
       where: { id: userId },
       data: { name: data.name, bio: data.bio, avatarUrl: data.avatarUrl },
       select: safeSelect,
     });
+    return presentUser(user);
   },
 
   async updateAvatar(userId, avatarUrl) {
-    return prisma.user.update({
+    const user = await prisma.user.update({
       where: { id: userId },
       data: { avatarUrl },
       select: safeSelect,
     });
+    return presentUser(user);
   },
 
   async changePassword(userId, { currentPassword, newPassword }) {
@@ -90,11 +98,52 @@ export const userService = {
       prisma.user.findMany({ skip, take, orderBy: { createdAt: 'desc' }, select: safeSelect }),
       prisma.user.count(),
     ]);
-    return { items, total };
+    return { items: items.map(presentUser), total };
+  },
+
+  async createUser({ name, email, password, role = 'USER', avatarUrl, bio, status = 'Active' }) {
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) throw ApiError.conflict('Email already registered');
+    const passwordHash = await hashPassword(password || 'Password123!');
+    const user = await prisma.user.create({
+      data: {
+        name,
+        email,
+        passwordHash,
+        role,
+        avatarUrl,
+        bio,
+        refreshToken: status === 'Blocked' ? '__BLOCKED__' : null,
+      },
+      select: safeSelect,
+    });
+    return presentUser(user);
+  },
+
+  async updateUser(userId, data) {
+    const update = {};
+    ['name', 'email', 'avatarUrl', 'bio'].forEach((key) => {
+      if (data[key] !== undefined) update[key] = data[key];
+    });
+    if (data.role) update.role = data.role;
+    if (data.password) update.passwordHash = await hashPassword(data.password);
+    if (data.status) update.refreshToken = data.status === 'Blocked' ? '__BLOCKED__' : null;
+    const user = await prisma.user.update({ where: { id: userId }, data: update, select: safeSelect });
+    return presentUser(user);
   },
 
   async setRole(userId, role) {
-    return prisma.user.update({ where: { id: userId }, data: { role }, select: safeSelect });
+    const user = await prisma.user.update({ where: { id: userId }, data: { role }, select: safeSelect });
+    return presentUser(user);
+  },
+
+  async setStatus(userId, status) {
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { refreshToken: status === 'Blocked' ? '__BLOCKED__' : null },
+      select: safeSelect,
+    });
+    return presentUser(user);
   },
 
   async deleteUser(userId) {

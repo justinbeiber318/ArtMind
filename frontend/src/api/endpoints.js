@@ -78,7 +78,10 @@ export const userApi = {
   changePassword: (body) => unwrap(api.patch('/users/me/password', body)),
   dashboard: () => unwrap(api.get('/users/dashboard')),
   list: (params) => api.get('/users', { params }).then((r) => r.data),
+  create: (body) => unwrap(api.post('/users', body)),
+  updateAdmin: (id, body) => unwrap(api.patch(`/users/${id}`, body)),
   setRole: (id, role) => unwrap(api.patch(`/users/${id}/role`, { role })),
+  setStatus: (id, status) => unwrap(api.patch(`/users/${id}/status`, { status })),
   remove: (id) => unwrap(api.delete(`/users/${id}`)),
 };
 

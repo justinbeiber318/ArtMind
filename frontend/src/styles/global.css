@@ -411,6 +411,25 @@ h4 { font-size: var(--text-md); line-height: 1.25; }
 .btn--block { width: 100%; }
 .btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
+.favorite-card {
+  display: grid;
+  gap: 12px;
+}
+
+.favorite-card__remove {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 14px;
+  color: #e28b8b;
+  border-color: rgba(226, 139, 139, 0.45);
+}
+
+.favorite-card__remove:hover {
+  color: var(--white);
+  background: #8b2e2e;
+  border-color: #8b2e2e;
+}
+
 /* AI recognition */
 .recognition-layout {
   display: grid;
@@ -1644,6 +1663,197 @@ input:focus, select:focus, textarea:focus {
   object-fit: cover;
   border: 1px solid var(--border);
   color: var(--navy);
+}
+
+.admin-table-thumb,
+.admin-table-avatar {
+  width: 54px;
+  height: 54px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  object-fit: cover;
+  border: 1px solid rgba(212, 175, 95, 0.28);
+  background: #0a0a0a;
+  color: var(--navy);
+  font-weight: 700;
+}
+
+.admin-table-thumb {
+  width: 72px;
+  height: 54px;
+}
+
+.admin-action-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.admin-action-btn {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(212, 175, 95, 0.32);
+  border-radius: 8px;
+  background: rgba(212, 175, 95, 0.06);
+  color: var(--navy);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.admin-action-btn:hover {
+  border-color: rgba(212, 175, 95, 0.72);
+  background: rgba(212, 175, 95, 0.14);
+  transform: translateY(-1px);
+}
+
+.admin-action-btn.is-danger {
+  border-color: rgba(226, 139, 139, 0.35);
+  color: #e28b8b;
+}
+
+.admin-action-btn.is-danger:hover {
+  background: rgba(139, 46, 46, 0.22);
+  border-color: rgba(226, 139, 139, 0.72);
+}
+
+.admin-action-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.admin-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(10px);
+}
+
+.admin-modal {
+  width: min(920px, 100%);
+  max-height: min(860px, calc(100vh - 48px));
+  overflow: auto;
+  border: 1px solid rgba(212, 175, 95, 0.26);
+  border-radius: 18px;
+  background: #0b0b0b;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.55);
+}
+
+.admin-modal__head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 22px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(11, 11, 11, 0.96);
+}
+
+.admin-modal__head h2 {
+  font-size: var(--text-lg);
+}
+
+.admin-modal__head button {
+  min-height: 38px;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #121212;
+  color: var(--dark-gray);
+  cursor: pointer;
+}
+
+.admin-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding: 22px;
+}
+
+.admin-form-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 8px;
+}
+
+.admin-detail-grid {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 20px;
+  padding: 22px;
+}
+
+.admin-detail-grid > img {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  border: 1px solid rgba(212, 175, 95, 0.28);
+  background: #050505;
+}
+
+.admin-detail-list {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-detail-list div {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  background: #0f0f0f;
+}
+
+.admin-detail-list span {
+  color: var(--muted);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.admin-detail-list strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--dark-gray);
+  font-weight: 600;
+}
+
+@media (max-width: 720px) {
+  .admin-modal-backdrop {
+    align-items: stretch;
+    padding: 12px;
+  }
+
+  .admin-form-grid,
+  .admin-detail-grid,
+  .admin-detail-list div {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-form-actions {
+    justify-content: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .admin-form-actions button {
+    justify-content: center;
+  }
 }
 
 .admin-row-actions {

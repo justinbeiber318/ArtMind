@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { fadeUp } from '../../lib/animations';
 import GlassCard from './GlassCard';
 
-export default function DataTable({ title, subtitle, icon, head, rows, loading, error }) {
+export default function DataTable({ title, subtitle, icon, head, rows, loading, error, actions }) {
   return (
     <motion.div variants={fadeUp} initial="hidden" animate="visible" className="space-y-4">
       <div className="flex items-center justify-between">
@@ -19,6 +19,7 @@ export default function DataTable({ title, subtitle, icon, head, rows, loading, 
             </div>
           )}
         </div>
+        {actions && <div className="flex items-center gap-2">{actions}</div>}
       </div>
 
       {error && (

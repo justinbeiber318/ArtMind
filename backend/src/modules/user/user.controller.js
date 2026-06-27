@@ -34,8 +34,21 @@ export const userController = {
     res.json({ success: true, data: items, meta: buildMeta(page, limit, total) });
   }),
 
+  create: asyncHandler(async (req, res) => {
+    res.status(201).json({ success: true, data: await userService.createUser(req.body) });
+  }),
+
+  update: asyncHandler(async (req, res) => {
+    res.json({ success: true, data: await userService.updateUser(Number(req.params.id), req.body) });
+  }),
+
   setRole: asyncHandler(async (req, res) => {
     const data = await userService.setRole(Number(req.params.id), req.body.role);
+    res.json({ success: true, data });
+  }),
+
+  setStatus: asyncHandler(async (req, res) => {
+    const data = await userService.setStatus(Number(req.params.id), req.body.status);
     res.json({ success: true, data });
   }),
 
