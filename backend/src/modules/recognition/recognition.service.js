@@ -1,6 +1,7 @@
 import sharp from "sharp";
 import { prisma } from "../../config/prisma.js";
 import { extractDominantColors } from "./colorExtractor.js";
+import { ApiError } from "../../utils/ApiError.js";
 
 /**
  * Image recognition.
@@ -111,8 +112,63 @@ function classifyFromPredictions(predictions) {
   };
 }
 
+function withTimeout(promise, ms, message) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+async function assertValidImage(buffer) {
+  try {
+    const meta = await sharp(buffer).metadata();
+    if (!["jpeg", "png", "webp"].includes(meta.format)) {
+      throw ApiError.badRequest("Unsupported file. Use JPG, JPEG, PNG or WEBP");
+    }
+    if (!meta.width || !meta.height) throw ApiError.badRequest("Invalid image");
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
+    throw ApiError.badRequest("Invalid image");
+  }
+}
+
+function inferMediumAndSurface({ style, category, colors }) {
+  const darkPalette = colors.some((hex) => /^#(0|1|2|3)/i.test(hex));
+  const medium = style === "Contemporary" || darkPalette ? "Digital or mixed media" : "Paint on canvas";
+  const surface = category === "Landscape" || category === "Architecture" ? "Canvas or panel" : "Canvas";
+  return { medium, surface };
+}
+
+function buildSummary({ style, category, colors, confidence }) {
+  const palette = colors.slice(0, 3).join(", ") || "muted tones";
+  return `The uploaded artwork appears to be a ${style.toLowerCase()} ${category.toLowerCase()} work with a dominant palette of ${palette}. The confidence score is ${Math.round(confidence * 100)}%, so this should be treated as an AI-assisted reading rather than a definitive attribution.`;
+}
+
+function normalizeHistoryRecord(item) {
+  const meta = item.dominantColors && !Array.isArray(item.dominantColors)
+    ? item.dominantColors
+    : { colors: item.dominantColors || [] };
+  return {
+    id: item.id,
+    imageUrl: item.imageUrl,
+    thumbnailUrl: meta.thumbnailUrl || item.imageUrl,
+    style: item.detectedStyle,
+    category: item.detectedCategory,
+    colors: meta.colors || [],
+    medium: meta.medium || "",
+    surface: meta.surface || "",
+    confidence: item.confidence,
+    summary: meta.summary || "",
+    recommendationIds: meta.recommendationIds || [],
+    createdAt: item.createdAt,
+  };
+}
+
 export const recognitionService = {
-  async analyze(buffer, userId, imageUrl) {
+  async analyze(buffer, userId, imageUrl, thumbnailUrl = imageUrl) {
+    await assertValidImage(buffer);
+
     let colors = [];
     try {
       colors = await extractDominantColors(buffer, 5);
@@ -126,12 +182,15 @@ export const recognitionService = {
       confidence: 0.3,
     };
     try {
-      const { tf, model } = await loadModel();
+      const { tf, model } = await withTimeout(loadModel(), 25000, "AI recognition timed out");
       const input = await bufferToTensor(tf, buffer);
-      const predictions = await model.classify(input, 5);
+      const predictions = await withTimeout(model.classify(input, 5), 25000, "AI recognition timed out");
       input.dispose();
       classification = classifyFromPredictions(predictions);
     } catch (err) {
+      if (/timed out/i.test(err.message)) {
+        throw ApiError.badRequest("AI recognition timed out. Please try again");
+      }
       // Model unavailable (e.g. offline on first load) -> still return colours + heuristic guess.
       console.warn(
         "TF classification unavailable, using colour-only result:",
@@ -148,29 +207,77 @@ export const recognitionService = {
         ],
       },
       take: 6,
-      include: { artist: true },
+      include: { artist: true, category: true, style: true },
+    });
+
+    const confidence = Number(classification.confidence.toFixed(3));
+    const { medium, surface } = inferMediumAndSurface({ ...classification, colors });
+    const summary = buildSummary({
+      style: classification.style,
+      category: classification.category,
+      colors,
+      confidence,
     });
 
     const result = {
       style: classification.style,
       category: classification.category,
       colors,
-      confidence: Number(classification.confidence.toFixed(3)),
+      medium,
+      surface,
+      confidence,
+      summary,
       recommendations,
     };
 
-    await prisma.uploadedImage.create({
+    const history = await prisma.uploadedImage.create({
       data: {
         userId: userId ?? null,
         imageUrl: imageUrl ?? "",
         detectedStyle: result.style,
         detectedCategory: result.category,
-        dominantColors: colors,
+        dominantColors: {
+          colors,
+          thumbnailUrl,
+          medium,
+          surface,
+          summary,
+          recommendationIds: recommendations.map((p) => p.id),
+        },
         confidence: result.confidence,
       },
     });
     await prisma.analytics.create({ data: { metric: "recognition" } });
 
-    return result;
+    return { ...result, id: history.id, imageUrl, thumbnailUrl, createdAt: history.createdAt };
+  },
+
+  async history(userId) {
+    const items = await prisma.uploadedImage.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
+    return items.map(normalizeHistoryRecord);
+  },
+
+  async getHistoryItem(userId, id) {
+    const item = await prisma.uploadedImage.findFirst({ where: { id, userId } });
+    if (!item) throw ApiError.notFound("Recognition result not found");
+    const record = normalizeHistoryRecord(item);
+    const recommendations = record.recommendationIds.length
+      ? await prisma.painting.findMany({
+        where: { id: { in: record.recommendationIds } },
+        include: { artist: true, category: true, style: true },
+      })
+      : [];
+    return { ...record, recommendations };
+  },
+
+  async deleteHistoryItem(userId, id) {
+    const item = await prisma.uploadedImage.findFirst({ where: { id, userId } });
+    if (!item) throw ApiError.notFound("Recognition result not found");
+    await prisma.uploadedImage.delete({ where: { id } });
+    return { deleted: true };
   },
 };

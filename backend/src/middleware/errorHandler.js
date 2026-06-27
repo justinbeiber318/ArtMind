@@ -12,6 +12,11 @@ export function errorHandler(err, _req, res, _next) {
   let message = err.message || 'Internal server error';
   let details = err.details;
 
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    statusCode = 400;
+    message = 'Image is too large. Maximum size is 5 MB';
+  }
+
   // Map common Prisma errors to friendly HTTP responses.
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
     if (err.code === 'P2002') {

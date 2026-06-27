@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { paintingApi, categoryApi, artistApi } from '../api/endpoints.js';
 import PaintingCard from '../components/PaintingCard.jsx';
 import { gsap } from 'gsap';
@@ -31,6 +31,7 @@ export default function Gallery() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({ category: '', style: '', artist: '', surface: '', color: '' });
   const [sort, setSort] = useState('newest');
+  const location = useLocation();
   const navigate = useNavigate();
 
   const headerRef = useRef(null);
@@ -46,6 +47,12 @@ export default function Gallery() {
       { opacity: 1, x: 0, duration: 0.8, ease: 'power3.out', delay: 0.1 }
     );
   }, []);
+
+  useEffect(() => {
+    const query = new URLSearchParams(location.search).get('search') || '';
+    setSearch(query);
+    setSearchTerm(query.trim());
+  }, [location.search]);
 
   useEffect(() => {
     let ts = 0;

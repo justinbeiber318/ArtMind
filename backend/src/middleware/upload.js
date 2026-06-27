@@ -7,7 +7,7 @@ const storage = multer.memoryStorage();
 
 export const upload = multer({
   storage,
-  limits: { fileSize: 8 * 1024 * 1024 }, // 8 MB
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
   fileFilter: (_req, file, cb) => {
     if (/^image\/(jpe?g|png|webp)$/.test(file.mimetype)) return cb(null, true);
     return cb(ApiError.badRequest('Only JPEG, PNG or WEBP images are allowed'));

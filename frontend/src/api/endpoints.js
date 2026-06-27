@@ -64,6 +64,9 @@ export const recognitionApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     }));
   },
+  history: () => unwrap(api.get('/recognition/history')),
+  result: (id) => unwrap(api.get(`/recognition/history/${id}`)),
+  remove: (id) => unwrap(api.delete(`/recognition/history/${id}`)),
 };
 
 export const userApi = {

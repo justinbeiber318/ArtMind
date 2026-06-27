@@ -1,28 +1,106 @@
-import { useState, useRef } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import { recognitionApi } from '../api/endpoints.js';
-import PaintingCard from '../components/PaintingCard.jsx';
+import { useEffect, useRef, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link, useSearchParams } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { favoriteApi, recognitionApi } from '../api/endpoints.js';
+import { selectIsAuthed } from '../features/auth/authSlice.js';
+
+const MAX_BYTES = 5 * 1024 * 1024;
+const ACCEPTED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 
 export default function AIRecognition() {
   const inputRef = useRef(null);
+  const qc = useQueryClient();
+  const isAuthed = useSelector(selectIsAuthed);
+  const [searchParams] = useSearchParams();
+  const resultId = searchParams.get('result');
+
+  const [file, setFile] = useState(null);
   const [preview, setPreview] = useState('');
-  const [fileName, setFileName] = useState('');
+  const [error, setError] = useState('');
+  const [progress, setProgress] = useState(0);
+  const [result, setResult] = useState(null);
 
-  const analyze = useMutation({ mutationFn: (file) => recognitionApi.analyze(file) });
+  const savedResult = useQuery({
+    queryKey: ['recognition', resultId],
+    queryFn: () => recognitionApi.result(resultId),
+    enabled: Boolean(resultId && isAuthed),
+  });
 
-  const onFile = (file) => {
-    if (!file) return;
-    setFileName(file.name);
-    setPreview(URL.createObjectURL(file));
-    analyze.mutate(file);
+  useEffect(() => {
+    if (savedResult.data) {
+      setResult(savedResult.data);
+      setPreview(savedResult.data.imageUrl || savedResult.data.thumbnailUrl || '');
+      setFile(null);
+      setError('');
+    }
+  }, [savedResult.data]);
+
+  const analyze = useMutation({
+    mutationFn: (imageFile) => recognitionApi.analyze(imageFile),
+    onSuccess: (data) => {
+      setProgress(100);
+      setResult(data);
+      qc.invalidateQueries({ queryKey: ['recognition-history'] });
+    },
+    onError: (err) => {
+      setProgress(0);
+      setError(err.message || 'Server error. Please try again.');
+    },
+  });
+
+  useEffect(() => {
+    if (!analyze.isPending) return undefined;
+    setProgress(12);
+    const timer = setInterval(() => {
+      setProgress((value) => Math.min(value + 9, 92));
+    }, 450);
+    return () => clearInterval(timer);
+  }, [analyze.isPending]);
+
+  const pickFile = (nextFile) => {
+    if (!nextFile) return;
+    setError('');
+    setResult(null);
+
+    if (!ACCEPTED_TYPES.includes(nextFile.type)) {
+      setError('Unsupported file. Please use JPG, JPEG, PNG or WEBP.');
+      return;
+    }
+    if (nextFile.size > MAX_BYTES) {
+      setError('Image is too large. Maximum size is 5 MB.');
+      return;
+    }
+
+    if (preview && preview.startsWith('blob:')) URL.revokeObjectURL(preview);
+    setFile(nextFile);
+    setPreview(URL.createObjectURL(nextFile));
+  };
+
+  const removeImage = () => {
+    if (preview && preview.startsWith('blob:')) URL.revokeObjectURL(preview);
+    setFile(null);
+    setPreview('');
+    setResult(null);
+    setError('');
+    setProgress(0);
+    if (inputRef.current) inputRef.current.value = '';
   };
 
   const onDrop = (e) => {
     e.preventDefault();
-    onFile(e.dataTransfer.files?.[0]);
+    if (analyze.isPending) return;
+    pickFile(e.dataTransfer.files?.[0]);
   };
 
-  const result = analyze.data;
+  const onAnalyze = () => {
+    if (!file) {
+      setError('Please choose an image before analysis.');
+      return;
+    }
+    setError('');
+    analyze.mutate(file);
+  };
 
   return (
     <>
@@ -37,76 +115,72 @@ export default function AIRecognition() {
         </div>
       </div>
 
-      <section className="section container" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, alignItems: 'start' }}>
-        {/* Upload */}
+      <section className="section container recognition-layout">
         <div>
           <div
-            onClick={() => inputRef.current?.click()}
+            className={`recognition-dropzone ${preview ? 'has-preview' : ''}`}
+            onClick={() => !analyze.isPending && inputRef.current?.click()}
             onDragOver={(e) => e.preventDefault()}
             onDrop={onDrop}
-            style={{
-              border: '1.5px dashed var(--border)', background: 'var(--light-gray)',
-              padding: preview ? 0 : '64px 24px', textAlign: 'center', cursor: 'pointer',
-              minHeight: 320, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
+          >
             {preview ? (
-              <img src={preview} alt="Upload preview" style={{ width: '100%', maxHeight: 480, objectFit: 'contain' }} />
+              <img src={preview} alt="Upload preview" />
             ) : (
               <div>
-                <p style={{ fontWeight: 500 }}>Drop an image here</p>
-                <p className="muted" style={{ fontSize: '0.85rem', marginTop: 6 }}>or click to browse · JPEG, PNG, WebP · up to 8&nbsp;MB</p>
+                <p style={{ fontWeight: 500 }}>Drag & drop an image here</p>
+                <p className="muted" style={{ fontSize: '0.85rem', marginTop: 6 }}>
+                  or browse JPG, JPEG, PNG, WEBP up to 5 MB
+                </p>
               </div>
             )}
           </div>
-          <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" hidden
-            onChange={(e) => onFile(e.target.files?.[0])} />
-          {fileName && <p className="muted" style={{ fontSize: '0.82rem', marginTop: 10 }}>{fileName}</p>}
-        </div>
 
-        {/* Result */}
-        <div>
-          {analyze.isPending && <div className="spinner" />}
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/jpeg,image/jpg,image/png,image/webp"
+            hidden
+            onChange={(e) => pickFile(e.target.files?.[0])}
+          />
 
-          {analyze.isError && (
-            <p className="form-error">Analysis failed. The image may be too large, or the recognition service is unavailable.</p>
-          )}
+          <div className="recognition-actions">
+            <button className="btn btn--ghost" type="button" onClick={() => inputRef.current?.click()} disabled={analyze.isPending}>
+              {preview ? 'Replace image' : 'Browse image'}
+            </button>
+            {preview && (
+              <button className="btn btn--ghost" type="button" onClick={removeImage} disabled={analyze.isPending}>
+                Remove image
+              </button>
+            )}
+            <button className="btn" type="button" onClick={onAnalyze} disabled={analyze.isPending || !file}>
+              {analyze.isPending ? 'Analyzing...' : 'Analyze Artwork'}
+            </button>
+          </div>
 
-          {result && (
-            <>
-              <div className="eyebrow">Analysis</div>
-              <h2 style={{ marginBottom: 20 }}>Detected attributes</h2>
+          {file && <p className="muted" style={{ fontSize: '0.82rem', marginTop: 10 }}>{file.name}</p>}
+          {error && <p className="form-error">{error}</p>}
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
-                <Stat label="Style" value={result.style} />
-                <Stat label="Category" value={result.category} />
-                <Stat label="Confidence" value={`${Math.round((result.confidence || 0) * 100)}%`} />
-              </div>
-
-              <div style={{ marginBottom: 24 }}>
-                <div style={{ fontSize: '0.72rem', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 10 }}>Dominant colors</div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {(result.colors || []).map((hex) => (
-                    <div key={hex} title={hex} style={{ flex: 1, height: 48, background: hex, border: '1px solid var(--border)' }} />
-                  ))}
-                </div>
-                <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-                  {(result.colors || []).map((hex) => (
-                    <span key={hex} className="muted" style={{ flex: 1, fontSize: '0.68rem', textAlign: 'center' }}>{hex}</span>
-                  ))}
-                </div>
-              </div>
-            </>
+          {analyze.isPending && (
+            <div className="recognition-progress" aria-label="Recognition progress">
+              <div className="spinner" />
+              <div className="recognition-progress__bar"><span style={{ width: `${progress}%` }} /></div>
+              <p className="muted">AI is analyzing the artwork...</p>
+            </div>
           )}
         </div>
+
+        <RecognitionResult result={result} preview={preview} />
       </section>
 
       {result?.recommendations?.length > 0 && (
         <section className="section--tight" style={{ background: 'var(--light-gray)' }}>
           <div className="container">
-            <div className="eyebrow">Related in the collection</div>
+            <div className="eyebrow">Similar Artworks</div>
             <h2 style={{ marginBottom: 28 }}>Works with a similar character</h2>
-            <div className="grid grid--cards">
-              {result.recommendations.map((p, i) => <PaintingCard key={p.id} painting={p} index={i} />)}
+            <div className="recognition-similar-grid">
+              {result.recommendations.map((p) => (
+                <SimilarArtworkCard key={p.id} painting={p} isAuthed={isAuthed} />
+              ))}
             </div>
           </div>
         </section>
@@ -115,11 +189,81 @@ export default function AIRecognition() {
   );
 }
 
+function RecognitionResult({ result, preview }) {
+  if (!result) {
+    return (
+      <div className="recognition-result recognition-result--empty">
+        <p className="muted">Recognition results will appear here after analysis.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="recognition-result">
+      <div className="eyebrow">AI Recognition Result</div>
+      <h2>Detected attributes</h2>
+
+      {preview && <img className="recognition-result__image" src={preview} alt="Uploaded artwork" />}
+
+      <div className="recognition-stats">
+        <Stat label="Painting Style" value={result.style} />
+        <Stat label="Artwork Category" value={result.category} />
+        <Stat label="Medium" value={result.medium || 'Unknown'} />
+        <Stat label="Surface Type" value={result.surface || 'Unknown'} />
+        <Stat label="Confidence Score" value={`${Math.round((result.confidence || 0) * 100)}%`} />
+      </div>
+
+      <div className="recognition-colors">
+        <div className="recognition-label">Dominant Colors</div>
+        <div className="recognition-swatches">
+          {(result.colors || []).map((hex) => (
+            <span key={hex} title={hex} style={{ background: hex }} />
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <div className="recognition-label">AI Summary</div>
+        <p className="muted">{result.summary || 'No summary available.'}</p>
+      </div>
+    </div>
+  );
+}
+
+function SimilarArtworkCard({ painting, isAuthed }) {
+  const [favorited, setFavorited] = useState(false);
+  const favorite = useMutation({
+    mutationFn: () => favoriteApi.toggle(painting.id),
+    onSuccess: (res) => setFavorited(res.favorited),
+  });
+
+  return (
+    <article className="recognition-art-card">
+      <img src={painting.thumbnailUrl || painting.imageUrl} alt={painting.title} />
+      <div>
+        <h3>{painting.title}</h3>
+        <p className="muted">{painting.artist?.name || 'Unknown artist'}</p>
+        <p className="tag">{painting.category?.name || 'Artwork'}</p>
+      </div>
+      <div className="recognition-art-card__actions">
+        <Link className="btn btn--ghost" to={`/paintings/${painting.slug}`}>View Details</Link>
+        {isAuthed ? (
+          <button className="btn btn--ghost" type="button" onClick={() => favorite.mutate()} disabled={favorite.isPending}>
+            {favorited ? 'Favorited' : 'Favorite'}
+          </button>
+        ) : (
+          <Link className="btn btn--ghost" to="/login">Favorite</Link>
+        )}
+      </div>
+    </article>
+  );
+}
+
 function Stat({ label, value }) {
   return (
-    <div style={{ border: '1px solid var(--border)', padding: '16px 18px' }}>
-      <div className="muted" style={{ fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{label}</div>
-      <div style={{ fontSize: '1.25rem', fontWeight: 600, marginTop: 4 }}>{value}</div>
+    <div className="recognition-stat">
+      <div className="muted">{label}</div>
+      <strong>{value}</strong>
     </div>
   );
 }

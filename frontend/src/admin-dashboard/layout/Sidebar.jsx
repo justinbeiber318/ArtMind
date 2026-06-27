@@ -1,24 +1,38 @@
 import { memo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, LogOut, Palette } from 'lucide-react';
+import { useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 
 import { NAV_ITEMS } from '../config/navItems';
 import { cn } from '../lib/cn';
 import { slideLeft } from '../lib/animations';
+import { authApi } from '../../api/endpoints';
+import { logout } from '../../features/auth/authSlice';
 
-const Sidebar = memo(({ tab, setTab, open, setOpen, darkMode }) => (
-  <>
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={() => setOpen(false)}
-        />
-      )}
-    </AnimatePresence>
+const Sidebar = memo(({ tab, setTab, open, setOpen, darkMode }) => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    dispatch(logout());
+    navigate('/', { replace: true });
+    try { await authApi.logout(); } catch { /* ignore */ }
+  };
+
+  return (
+    <>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setOpen(false)}
+          />
+        )}
+      </AnimatePresence>
 
     <motion.aside
       className={cn(
@@ -118,6 +132,8 @@ const Sidebar = memo(({ tab, setTab, open, setOpen, darkMode }) => (
 
       <div className="px-3 py-4 border-t border-[#242424]/80 space-y-1">
         <motion.button
+          type="button"
+          onClick={handleLogout}
           whileHover={{ x: 2 }}
           whileTap={{ scale: 0.97 }}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-[#e28b8b] hover:bg-[#8b2e2e]/15 transition-all"
@@ -139,8 +155,9 @@ const Sidebar = memo(({ tab, setTab, open, setOpen, darkMode }) => (
         )}
       </div>
     </motion.aside>
-  </>
-));
+    </>
+  );
+});
 
 Sidebar.displayName = 'Sidebar';
 
