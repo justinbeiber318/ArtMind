@@ -103,4 +103,93 @@ export const analyticsService = {
       },
     });
   },
+
+  async exportPaintingsCsv() {
+    const paintings = await prisma.painting.findMany({
+      include: { artist: true, category: true, style: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    let csv = 'ID,Title,Artist,Category,Style,Surface,Medium,Price,Views,Trending Score,Featured,Created At\n';
+    for (const p of paintings) {
+      const title = `"${(p.title || '').replace(/"/g, '""')}"`;
+      const artist = `"${(p.artist?.name || '').replace(/"/g, '""')}"`;
+      const category = `"${(p.category?.name || '').replace(/"/g, '""')}"`;
+      const style = `"${(p.style?.name || '').replace(/"/g, '""')}"`;
+      const surface = `"${(p.surface || '').replace(/"/g, '""')}"`;
+      const medium = `"${(p.medium || '').replace(/"/g, '""')}"`;
+      const price = p.price ? p.price.toString() : '';
+      csv += `${p.id},${title},${artist},${category},${style},${surface},${medium},${price},${p.viewCount},${p.trendingScore},${p.featured},${p.createdAt.toISOString()}\n`;
+    }
+    return csv;
+  },
+
+  async recalculateTrending() {
+    const paintings = await prisma.painting.findMany({
+      select: { id: true, viewCount: true, _count: { select: { favorites: true } } }
+    });
+    const updates = paintings.map((p) => {
+      const score = p.viewCount / 100 + p._count.favorites * 2.0;
+      return prisma.painting.update({
+        where: { id: p.id },
+        data: { trendingScore: score }
+      });
+    });
+    await prisma.$transaction(updates);
+    return { updated: updates.length };
+  },
+
+  async rebuildAllRecommendations() {
+    const users = await prisma.user.findMany({ select: { id: true } });
+    const { recommendationService } = await import('../recommendation/recommendation.service.js');
+    let count = 0;
+    for (const u of users) {
+      await recommendationService.rebuildForUser(u.id);
+      count++;
+    }
+    return { usersRebuilt: count };
+  },
+
+  async cleanChatLogs() {
+    const total = await prisma.chatLog.count();
+    if (total > 100) {
+      const oldestToKeep = await prisma.chatLog.findMany({
+        orderBy: { createdAt: 'desc' },
+        skip: 99,
+        take: 1,
+        select: { createdAt: true }
+      });
+      if (oldestToKeep.length > 0) {
+        const result = await prisma.chatLog.deleteMany({
+          where: { createdAt: { lt: oldestToKeep[0].createdAt } }
+        });
+        return { deleted: result.count };
+      }
+    }
+    return { deleted: 0 };
+  },
+
+  async systemHealth() {
+    const fs = await import('fs/promises');
+    const path = await import('path');
+    const { UPLOAD_DIR } = await import('../../utils/storage.js');
+    let uploadCount = 0;
+    let uploadSize = 0;
+    try {
+      const files = await fs.readdir(UPLOAD_DIR);
+      uploadCount = files.length;
+      for (const file of files) {
+        const stats = await fs.stat(path.join(UPLOAD_DIR, file));
+        uploadSize += stats.size;
+      }
+    } catch { /* ignore */ }
+    
+    const dbStatus = await prisma.$queryRaw`SELECT 1 as ok`.then(() => 'Connected').catch(() => 'Disconnected');
+
+    return {
+      dbStatus,
+      uptime: process.uptime(),
+      uploadCount,
+      uploadSizeMb: Number((uploadSize / (1024 * 1024)).toFixed(2))
+    };
+  },
 };

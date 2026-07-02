@@ -92,4 +92,9 @@ export const analyticsApi = {
   styles: () => unwrap(api.get('/analytics/styles')),
   userGrowth: () => unwrap(api.get('/analytics/user-growth')),
   aiLogs: () => unwrap(api.get('/analytics/ai-logs')),
+  exportReport: () => api.get('/analytics/export', { responseType: 'blob' }).then((r) => r.data),
+  recalculateTrending: () => unwrap(api.post('/analytics/quick-actions/recalculate-trending')),
+  rebuildRecommendations: () => unwrap(api.post('/analytics/quick-actions/rebuild-recommendations')),
+  cleanLogs: () => unwrap(api.post('/analytics/quick-actions/clean-logs')),
+  healthCheck: () => unwrap(api.get('/analytics/quick-actions/health')),
 };
