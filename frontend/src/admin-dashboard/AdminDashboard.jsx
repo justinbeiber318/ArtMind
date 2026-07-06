@@ -11,6 +11,7 @@ import DashboardHeader from './layout/DashboardHeader';
 import Overview from './pages/Overview';
 import PaintingsTable from './pages/PaintingsTable';
 import ArtistsTable from './pages/ArtistsTable';
+import TaxonomyManagement from './pages/TaxonomyManagement';
 import UsersTable from './pages/UsersTable';
 import AiLogs from './pages/AiLogs';
 import SettingsPlaceholder from './pages/SettingsPlaceholder';
@@ -19,6 +20,7 @@ const PAGE_COMPONENTS = {
   Overview,
   Paintings: PaintingsTable,
   Artists: ArtistsTable,
+  Categories: TaxonomyManagement,
   Users: UsersTable,
   'AI Logs': AiLogs,
   Settings: SettingsPlaceholder,

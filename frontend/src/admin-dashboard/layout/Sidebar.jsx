@@ -149,7 +149,6 @@ const Sidebar = memo(({ tab, setTab, open, setOpen, darkMode }) => {
             </div>
             <div>
               <div className="text-xs font-semibold text-[#f0e6c8]">Admin</div>
-              <div className="text-[10px] text-[#8a8a8a]">admin@aurelis.art</div>
             </div>
           </div>
         )}

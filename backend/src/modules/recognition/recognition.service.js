@@ -40,6 +40,7 @@ async function loadModel() {
 async function bufferToTensor(tf, buffer) {
   const { data, info } = await sharp(buffer)
     .resize(224, 224, { fit: "fill" })
+    .toColorspace("srgb")
     .removeAlpha()
     .raw()
     .toBuffer({ resolveWithObject: true });
@@ -52,6 +53,14 @@ async function bufferToTensor(tf, buffer) {
       rgb[i * 3] = data[i];
       rgb[i * 3 + 1] = data[i];
       rgb[i * 3 + 2] = data[i];
+    }
+  }
+  if (info.channels > 3) {
+    rgb = Buffer.alloc(info.width * info.height * 3);
+    for (let i = 0; i < info.width * info.height; i += 1) {
+      rgb[i * 3] = data[i * info.channels];
+      rgb[i * 3 + 1] = data[i * info.channels + 1];
+      rgb[i * 3 + 2] = data[i * info.channels + 2];
     }
   }
 

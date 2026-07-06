@@ -12,24 +12,13 @@ const SORTS = [
   { value: 'trending', key: 'trending' },
 ];
 
-const SURFACES = ['Canvas', 'Panel', 'Paper', 'Linen', 'Board'];
-
-const COLOR_THEMES = [
-  { hex: '#1e3a5f', label: 'Navy' },
-  { hex: '#2d2d2d', label: 'Charcoal' },
-  { hex: '#8b2e2e', label: 'Crimson' },
-  { hex: '#c9a227', label: 'Gold' },
-  { hex: '#3d6b4f', label: 'Green' },
-  { hex: '#f5f5f5', label: 'Ivory' },
-];
-
 const PAGE_SIZE = 12;
 
 export default function Gallery() {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [filters, setFilters] = useState({ category: '', style: '', artist: '', surface: '', color: '' });
+  const [filters, setFilters] = useState({ category: '', style: '', artist: '', surface: '' });
   const [sort, setSort] = useState('newest');
   const location = useLocation();
   const navigate = useNavigate();
@@ -95,6 +84,7 @@ export default function Gallery() {
 
   const categories = useQuery({ queryKey: ['categories'], queryFn: categoryApi.list });
   const styles = useQuery({ queryKey: ['styles'], queryFn: categoryApi.styles });
+  const surfaces = useQuery({ queryKey: ['surfaces'], queryFn: categoryApi.surfaces });
   const artists = useQuery({ queryKey: ['artists', 'all'], queryFn: () => artistApi.list({ limit: 50 }) });
 
   const queryParams = useMemo(() => {
@@ -119,14 +109,27 @@ export default function Gallery() {
   const paintings = data?.pages.flatMap((pg) => pg.data) || [];
   const total = data?.pages[0]?.meta?.total ?? 0;
 
-  const updateFilter = (key, value) =>
-    setFilters((f) => ({ ...f, [key]: f[key] === value ? '' : value }));
+  const scrollToTop = () => {
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  };
 
-  const onSearchSubmit = (e) => { e.preventDefault(); setSearchTerm(search.trim()); };
+  const updateFilter = (key, value) => {
+    setFilters((f) => ({ ...f, [key]: f[key] === value ? '' : value }));
+    scrollToTop();
+  };
+
+  const onSearchSubmit = (e) => {
+    e.preventDefault();
+    setSearchTerm(search.trim());
+    scrollToTop();
+  };
 
   const clearAll = () => {
-    setFilters({ category: '', style: '', artist: '', surface: '', color: '' });
+    setFilters({ category: '', style: '', artist: '', surface: '' });
     setSearch(''); setSearchTerm(''); setSort('newest');
+    scrollToTop();
   };
 
   return (
@@ -143,7 +146,14 @@ export default function Gallery() {
 
       <section className="section container" style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 40, alignItems: 'start' }}>
         {/* Filter rail */}
-        <aside ref={asideRef} style={{ position: 'sticky', top: 90, opacity: 0 }}>
+        <aside
+          ref={asideRef}
+          style={{
+            position: 'sticky',
+            top: 90,
+            opacity: 0,
+          }}
+        >
           <form onSubmit={onSearchSubmit} className="field">
             <label>{t('search')}</label>
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('title_or_description')} />
@@ -170,24 +180,10 @@ export default function Gallery() {
             ))}
           </FilterGroup>
 
-          <FilterGroup label={t('color_theme')}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {COLOR_THEMES.map((c) => (
-                <button key={c.hex} type="button" title={c.label}
-                  onClick={() => updateFilter('color', c.hex)}
-                  style={{
-                    width: 26, height: 26, background: c.hex, cursor: 'pointer',
-                    border: filters.color === c.hex ? '2px solid var(--navy)' : '1px solid var(--border)',
-                    outline: filters.color === c.hex ? '2px solid var(--light-gray)' : 'none',
-                  }} />
-              ))}
-            </div>
-          </FilterGroup>
-
           <FilterGroup label={t('surface')}>
-            {SURFACES.map((s) => (
-              <FilterChip key={s} active={filters.surface === s}
-                onClick={() => updateFilter('surface', s)}>{s}</FilterChip>
+            {(surfaces.data || []).map((s) => (
+              <FilterChip key={s.name} active={filters.surface === s.name}
+                onClick={() => updateFilter('surface', s.name)}>{s.name}</FilterChip>
             ))}
           </FilterGroup>
 
@@ -199,7 +195,7 @@ export default function Gallery() {
         <div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginBottom: 24 }}>
             <span className="muted" style={{ fontSize: '0.85rem' }}>{t('sort_by')}</span>
-            <select value={sort} onChange={(e) => setSort(e.target.value)}
+            <select value={sort} onChange={(e) => { setSort(e.target.value); scrollToTop(); }}
               style={{ padding: '8px 12px', border: '1px solid var(--border)', fontFamily: 'var(--font-body)', background: 'var(--white)', color: 'var(--dark-gray)' }}>
               {SORTS.map((s) => <option key={s.value} value={s.value}>{t(s.key)}</option>)}
             </select>
@@ -240,7 +236,7 @@ function FilterGroup({ label, children }) {
 
 function FilterChip({ active, onClick, children }) {
   return (
-    <button type="button" onClick={onClick}
+    <button type="button" onClick={(e) => { e.currentTarget.blur(); onClick(); }}
       style={{
         fontSize: '0.78rem', padding: '5px 11px', cursor: 'pointer',
         border: `1px solid ${active ? 'var(--navy)' : 'var(--border)'}`,
