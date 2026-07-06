@@ -1,8 +1,10 @@
 import { db } from '../../config/database.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { uniqueSlug } from '../../utils/slug.js';
+import { extractDominantColors } from '../recognition/colorExtractor.js';
 
 const includeRefs = { artist: true, category: true, style: true };
+const PALETTE_TIMEOUT_MS = 4500;
 
 // Translates the gallery filter/sort query into a db query.
 function buildWhere(q) {
@@ -21,6 +23,16 @@ function buildWhere(q) {
   // Color theme filter against the dominant_colors JSON array.
   if (q.color) {
     where.dominantColors = { array_contains: q.color };
+  }
+  if (q.status === 'pending') {
+    where.uploadedById = { not: null };
+    where.featured = false;
+  }
+  if (q.status === 'approved') {
+    where.featured = true;
+  }
+  if (q.status === 'system') {
+    where.uploadedById = null;
   }
   return where;
 }
@@ -50,6 +62,48 @@ function buildOrderBy(sort) {
     case 'newest':
     default: return { createdAt: 'desc' };
   }
+}
+
+function hasPalette(colors) {
+  return Array.isArray(colors) && colors.length > 0;
+}
+
+async function fetchImageBuffer(url) {
+  if (!url || !/^https?:\/\//i.test(url)) return null;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), PALETTE_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) return null;
+    const type = response.headers.get('content-type') || '';
+    if (type && !type.startsWith('image/')) return null;
+    return Buffer.from(await response.arrayBuffer());
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function deriveDominantColorsFromUrl(imageUrl) {
+  const buffer = await fetchImageBuffer(imageUrl);
+  if (!buffer) return [];
+  try {
+    return await extractDominantColors(buffer, 5);
+  } catch {
+    return [];
+  }
+}
+
+async function ensureDominantColors(painting) {
+  if (!painting || hasPalette(painting.dominantColors)) return painting;
+  const dominantColors = await deriveDominantColorsFromUrl(painting.imageUrl);
+  if (!hasPalette(dominantColors)) return painting;
+  await db.painting.update({
+    where: { id: painting.id },
+    data: { dominantColors },
+  });
+  return { ...painting, dominantColors };
 }
 
 export const paintingService = {
@@ -92,18 +146,20 @@ export const paintingService = {
       throw ApiError.notFound('Painting not found');
     }
 
+    const enrichedPainting = await ensureDominantColors(painting);
+
     // Atomic view increment; record history for signed-in viewers.
     await db.painting.update({
-      where: { id: painting.id },
+      where: { id: enrichedPainting.id },
       data: { viewCount: { increment: 1 } },
     });
     if (viewer?.id) {
       await db.viewHistory.create({
-        data: { userId: viewer.id, paintingId: painting.id },
+        data: { userId: viewer.id, paintingId: enrichedPainting.id },
       });
     }
-    painting.viewCount += 1;
-    return painting;
+    enrichedPainting.viewCount += 1;
+    return enrichedPainting;
   },
 
   // Content-based "similar" lookup: same style/category, ranked by shared
@@ -143,8 +199,11 @@ export const paintingService = {
     const slug = await uniqueSlug(data.title, (s) =>
       db.painting.findUnique({ where: { slug: s } }).then(Boolean),
     );
+    const dominantColors = hasPalette(data.dominantColors)
+      ? data.dominantColors
+      : await deriveDominantColorsFromUrl(data.imageUrl);
     return db.painting.create({
-      data: { ...data, slug },
+      data: { ...data, slug, dominantColors },
       include: includeRefs,
     });
   },
@@ -195,7 +254,12 @@ export const paintingService = {
   },
 
   async update(id, data) {
-    return db.painting.update({ where: { id }, data, include: includeRefs });
+    const nextData = { ...data };
+    if (!hasPalette(nextData.dominantColors) && nextData.imageUrl) {
+      const dominantColors = await deriveDominantColorsFromUrl(nextData.imageUrl);
+      if (hasPalette(dominantColors)) nextData.dominantColors = dominantColors;
+    }
+    return db.painting.update({ where: { id }, data: nextData, include: includeRefs });
   },
 
   async remove(id) {

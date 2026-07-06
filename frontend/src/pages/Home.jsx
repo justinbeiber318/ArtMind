@@ -64,6 +64,7 @@ export default function Home() {
   const scrollPctRef = useRef(fromGallery ? 1 : 0);
   const targetPctRef = useRef(fromGallery ? 1 : 0);
   const currentActiveRef = useRef(fromGallery ? 2 : 0);
+  const animateToTargetRef = useRef(() => {});
 
   useEffect(() => {
     const root = rootRef.current;
@@ -106,21 +107,36 @@ export default function Home() {
       if (pctRef.current) pctRef.current.textContent = `${Math.round(p * 100)}%`;
     };
 
-    let animationFrameId;
+    let animationFrameId = 0;
+    let isAnimating = false;
+
     const loop = () => {
       scrollPctRef.current += (targetPctRef.current - scrollPctRef.current) * 0.072;
-      if (Math.abs(targetPctRef.current - scrollPctRef.current) < 0.0001) {
+      const settled = Math.abs(targetPctRef.current - scrollPctRef.current) < 0.0001;
+      if (settled) {
         scrollPctRef.current = targetPctRef.current;
       }
       renderSlider(scrollPctRef.current);
+      if (settled) {
+        isAnimating = false;
+        animationFrameId = 0;
+        return;
+      }
       animationFrameId = requestAnimationFrame(loop);
     };
-    loop();
+
+    const startLoop = () => {
+      if (isAnimating) return;
+      isAnimating = true;
+      animationFrameId = requestAnimationFrame(loop);
+    };
+    animateToTargetRef.current = startLoop;
 
     const handleWheel = (e) => {
       e.preventDefault();
       if (targetPctRef.current === 1 && e.deltaY > 0) { navigate('/gallery'); return; }
       targetPctRef.current = clamp(targetPctRef.current + e.deltaY / 2000, 0, 1);
+      startLoop();
     };
 
     let ts = 0, tp = 0;
@@ -129,6 +145,7 @@ export default function Home() {
       const deltaY = ts - e.touches[0].clientY;
       if (targetPctRef.current === 1 && deltaY > 40) { navigate('/gallery'); return; }
       targetPctRef.current = clamp(tp + deltaY / 600, 0, 1);
+      startLoop();
       if (e.cancelable) e.preventDefault();
     };
 
@@ -138,6 +155,7 @@ export default function Home() {
       if (!dr) return;
       if (targetPctRef.current === 1 && e.clientY - dy0 < -60) { navigate('/gallery'); return; }
       targetPctRef.current = clamp(dp0 + (e.clientY - dy0) / 600, 0, 1);
+      startLoop();
     };
     const handleMouseUp = () => { dr = false; };
 
@@ -145,11 +163,15 @@ export default function Home() {
       if (e.key === 'ArrowDown' || e.key === 's') {
         if (targetPctRef.current === 1) { navigate('/gallery'); return; }
         targetPctRef.current = clamp(targetPctRef.current + 0.05, 0, 1);
+        startLoop();
       }
-      if (e.key === 'ArrowUp' || e.key === 'w') targetPctRef.current = clamp(targetPctRef.current - 0.05, 0, 1);
-      if (e.key === '1') targetPctRef.current = 0;
-      if (e.key === '2') targetPctRef.current = 0.35;
-      if (e.key === '3') targetPctRef.current = 0.72;
+      if (e.key === 'ArrowUp' || e.key === 'w') {
+        targetPctRef.current = clamp(targetPctRef.current - 0.05, 0, 1);
+        startLoop();
+      }
+      if (e.key === '1') { targetPctRef.current = 0; startLoop(); }
+      if (e.key === '2') { targetPctRef.current = 0.35; startLoop(); }
+      if (e.key === '3') { targetPctRef.current = 0.72; startLoop(); }
     };
 
     root.addEventListener('wheel', handleWheel, { passive: false });
@@ -177,12 +199,14 @@ export default function Home() {
   const handleDotClick = (index) => {
     const targets = [0, 0.35, 0.72];
     targetPctRef.current = targets[index];
+    animateToTargetRef.current();
   };
 
   const handleTrackClick = (e) => {
     if (!trackRef.current) return;
     const r = trackRef.current.getBoundingClientRect();
     targetPctRef.current = clamp((e.clientY - r.top) / r.height, 0, 1);
+    animateToTargetRef.current();
   };
 
   return (

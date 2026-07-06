@@ -1,18 +1,19 @@
-import { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { CheckCircle2, Clock3, ImagePlus, ShieldCheck, UploadCloud, X } from 'lucide-react';
 import { paintingApi, categoryApi } from '../api/endpoints.js';
 import PaintingCard from '../components/PaintingCard.jsx';
 
 const MAX_BYTES = 8 * 1024 * 1024;
 
 export default function Upload() {
-  const navigate = useNavigate();
   const qc = useQueryClient();
   const inputRef = useRef(null);
 
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
+  const [submitted, setSubmitted] = useState(null);
   const [form, setForm] = useState({
     title: '', artistName: '', description: '',
     categoryId: '', styleId: '', medium: '', surface: '', year: '',
@@ -25,12 +26,38 @@ export default function Upload() {
 
   const onChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
 
+  useEffect(() => () => {
+    if (preview) URL.revokeObjectURL(preview);
+  }, [preview]);
+
   const pickFile = (f) => {
     if (!f) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(f.type)) {
+      setError('Please choose a JPEG, PNG or WebP image.');
+      return;
+    }
     if (f.size > MAX_BYTES) { setError('Image is too large (max 8 MB).'); return; }
     setError('');
     setFile(f);
-    setPreview(URL.createObjectURL(f));
+    setSubmitted(null);
+    setPreview((old) => {
+      if (old) URL.revokeObjectURL(old);
+      return URL.createObjectURL(f);
+    });
+  };
+
+  const clearFile = () => {
+    if (preview) URL.revokeObjectURL(preview);
+    setFile(null);
+    setPreview('');
+  };
+
+  const resetForm = () => {
+    clearFile();
+    setForm({
+      title: '', artistName: '', description: '',
+      categoryId: '', styleId: '', medium: '', surface: '', year: '',
+    });
   };
 
   const upload = useMutation({
@@ -43,7 +70,8 @@ export default function Upload() {
     onSuccess: (painting) => {
       qc.invalidateQueries({ queryKey: ['paintings', 'mine'] });
       qc.invalidateQueries({ queryKey: ['gallery'] });
-      navigate(`/paintings/${painting.slug}`);
+      setSubmitted(painting);
+      resetForm();
     },
     onError: (err) => setError(err?.response?.data?.message || 'Upload failed. Please try again.'),
   });
@@ -66,37 +94,68 @@ export default function Upload() {
           <div className="eyebrow">Contribute</div>
           <h1>Upload your artwork</h1>
           <p className="muted" style={{ marginTop: 8, maxWidth: 620 }}>
-            Add a work to the Aurelis collection. We&apos;ll extract its color palette automatically
-            and send it to the admin team for review before it appears in the public gallery.
+            Add a work to the Aurelis collection. Your image is saved to the database immediately,
+            then held for admin review before it appears in the public gallery.
           </p>
         </div>
       </div>
 
-      <section className="section container" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, alignItems: 'start' }}>
-        <div>
+      <section className="section container upload-layout">
+        <div className="upload-left">
+          <div className="upload-steps">
+            <div><ImagePlus size={18} /><span>Select image</span></div>
+            <div><ShieldCheck size={18} /><span>Admin review</span></div>
+            <div><CheckCircle2 size={18} /><span>Publish</span></div>
+          </div>
           <div
+            className={`upload-dropzone ${preview ? 'has-preview' : ''} ${isDragging ? 'is-dragging' : ''}`}
             onClick={() => inputRef.current?.click()}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => { e.preventDefault(); pickFile(e.dataTransfer.files?.[0]); }}
-            style={{
-              border: '1.5px dashed var(--border)', background: 'var(--light-gray)',
-              padding: preview ? 0 : '64px 24px', textAlign: 'center', cursor: 'pointer',
-              minHeight: 360, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
+            onDragEnter={(e) => { e.preventDefault(); setIsDragging(true); }}
+            onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={(e) => { e.preventDefault(); setIsDragging(false); pickFile(e.dataTransfer.files?.[0]); }}
+          >
             {preview ? (
-              <img src={preview} alt="Preview" style={{ width: '100%', maxHeight: 520, objectFit: 'contain' }} />
+              <>
+                <img src={preview} alt="Preview" />
+                <button
+                  type="button"
+                  className="upload-clear"
+                  onClick={(e) => { e.stopPropagation(); clearFile(); }}
+                  aria-label="Remove selected image"
+                  title="Remove image"
+                >
+                  <X size={16} />
+                </button>
+              </>
             ) : (
-              <div>
-                <p style={{ fontWeight: 500 }}>Drop an image here</p>
-                <p className="muted" style={{ fontSize: '0.85rem', marginTop: 6 }}>or click to browse &middot; JPEG, PNG, WebP &middot; up to 8&nbsp;MB</p>
+              <div className="upload-dropzone__empty">
+                <UploadCloud size={38} />
+                <p>Drop an image here</p>
+                <span>or click to browse · JPEG, PNG, WebP · up to 8 MB</span>
               </div>
             )}
           </div>
           <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" hidden
             onChange={(e) => pickFile(e.target.files?.[0])} />
+          {file && (
+            <div className="upload-file-meta">
+              <strong>{file.name}</strong>
+              <span>{(file.size / (1024 * 1024)).toFixed(2)} MB</span>
+            </div>
+          )}
         </div>
 
-        <div>
+        <div className="upload-panel">
+          {submitted && (
+            <div className="upload-success">
+              <Clock3 size={20} />
+              <div>
+                <strong>{submitted.title} is waiting for admin approval.</strong>
+                <span>It is saved in the database and will appear publicly after review.</span>
+              </div>
+            </div>
+          )}
           {error && <div className="form-error">{error}</div>}
           <form onSubmit={onSubmit}>
             <div className="field">
@@ -113,7 +172,7 @@ export default function Upload() {
               <textarea id="description" name="description" rows={4} value={form.description} onChange={onChange} required />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div className="upload-form-grid">
               <div className="field">
                 <label htmlFor="categoryId">Category *</label>
                 <select id="categoryId" name="categoryId" value={form.categoryId} onChange={onChange} required>
@@ -154,6 +213,18 @@ export default function Upload() {
           <div className="container">
             <div className="eyebrow">Your uploads</div>
             <h2 style={{ marginBottom: 28 }}>Works you&apos;ve added</h2>
+            <div className="upload-status-list">
+              {mine.data.map((p) => (
+                <div key={p.id} className="upload-status-row">
+                  <img src={p.thumbnailUrl || p.imageUrl} alt="" />
+                  <div>
+                    <strong>{p.title}</strong>
+                    <span>{p.featured ? 'Approved and visible in gallery' : 'Pending admin review'}</span>
+                  </div>
+                  <em className={p.featured ? 'is-approved' : ''}>{p.featured ? 'Approved' : 'Pending'}</em>
+                </div>
+              ))}
+            </div>
             <div className="grid grid--cards">
               {mine.data.map((p, i) => <PaintingCard key={p.id} painting={p} index={i} />)}
             </div>

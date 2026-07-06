@@ -71,8 +71,12 @@ function appendFieldWhere(meta, key, value, clauses, params, alias = '') {
       clauses.push(`${column} NOT IN (${value.notIn.map(() => '?').join(',') || 'NULL'})`);
       params.push(...value.notIn);
     } else if ('not' in value) {
-      clauses.push(`${column} <> ?`);
-      params.push(value.not);
+      if (value.not === null) {
+        clauses.push(`${column} IS NOT NULL`);
+      } else {
+        clauses.push(`${column} <> ?`);
+        params.push(value.not);
+      }
     } else if ('gte' in value) {
       clauses.push(`${column} >= ?`);
       params.push(value.gte);

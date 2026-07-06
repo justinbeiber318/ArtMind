@@ -1,9 +1,8 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { paintingApi, categoryApi, artistApi } from '../api/endpoints.js';
 import PaintingCard from '../components/PaintingCard.jsx';
-import { gsap } from 'gsap';
 import { useTranslation } from 'react-i18next';
 
 const SORTS = [
@@ -12,7 +11,7 @@ const SORTS = [
   { value: 'trending', key: 'trending' },
 ];
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 9;
 
 export default function Gallery() {
   const { t } = useTranslation();
@@ -22,20 +21,6 @@ export default function Gallery() {
   const [sort, setSort] = useState('newest');
   const location = useLocation();
   const navigate = useNavigate();
-
-  const headerRef = useRef(null);
-  const asideRef = useRef(null);
-
-  useEffect(() => {
-    gsap.fromTo(headerRef.current, 
-      { opacity: 0, y: -20 }, 
-      { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' }
-    );
-    gsap.fromTo(asideRef.current, 
-      { opacity: 0, x: -30 }, 
-      { opacity: 1, x: 0, duration: 0.8, ease: 'power3.out', delay: 0.1 }
-    );
-  }, []);
 
   useEffect(() => {
     const query = new URLSearchParams(location.search).get('search') || '';
@@ -134,7 +119,7 @@ export default function Gallery() {
 
   return (
     <>
-      <div className="page-head" ref={headerRef} style={{ opacity: 0 }}>
+      <div className="page-head gallery-reveal">
         <div className="container">
           <div className="eyebrow">{t('collection')}</div>
           <h1>{t('gallery')}</h1>
@@ -144,15 +129,10 @@ export default function Gallery() {
         </div>
       </div>
 
-      <section className="section container" style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 40, alignItems: 'start' }}>
+      <section className="section container gallery-layout">
         {/* Filter rail */}
         <aside
-          ref={asideRef}
-          style={{
-            position: 'sticky',
-            top: 90,
-            opacity: 0,
-          }}
+          className="gallery-filters gallery-reveal gallery-reveal--delay"
         >
           <form onSubmit={onSearchSubmit} className="field">
             <label>{t('search')}</label>
@@ -193,7 +173,7 @@ export default function Gallery() {
 
         {/* Results */}
         <div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+          <div className="gallery-toolbar">
             <span className="muted" style={{ fontSize: '0.85rem' }}>{t('sort_by')}</span>
             <select value={sort} onChange={(e) => { setSort(e.target.value); scrollToTop(); }}
               style={{ padding: '8px 12px', border: '1px solid var(--border)', fontFamily: 'var(--font-body)', background: 'var(--white)', color: 'var(--dark-gray)' }}>
@@ -221,6 +201,7 @@ export default function Gallery() {
           )}
         </div>
       </section>
+
     </>
   );
 }

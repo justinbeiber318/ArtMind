@@ -57,7 +57,7 @@ const Navbar = memo(({
                 animate={{ width: 240, opacity: 1 }}
                 exit={{ width: 0, opacity: 0 }}
                 transition={{ duration: 0.25 }}
-                className="overflow-hidden"
+                className="overflow-hidden max-w-[48vw] sm:max-w-none"
               >
                 <input
                   autoFocus

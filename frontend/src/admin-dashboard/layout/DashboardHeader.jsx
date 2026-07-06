@@ -106,7 +106,7 @@ export default function DashboardHeader() {
           </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <GlassButton icon={<Zap size={14} />} onClick={openModal}>
             Quick Actions
           </GlassButton>
@@ -178,7 +178,7 @@ export default function DashboardHeader() {
                   <h3 className="text-xs font-semibold text-[#8a8a8a] uppercase tracking-wider">Execute Action</h3>
 
                   {/* Action 1 */}
-                  <div className="bg-[#0c0c0c] border border-[#1e1e1e] rounded-xl p-4 flex items-center justify-between gap-4">
+                  <div className="bg-[#0c0c0c] border border-[#1e1e1e] rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
                       <div className="text-sm font-semibold text-[#f0e6c8]">Recalculate Painting Trending Scores</div>
                       <div className="text-xs text-[#8a8a8a] mt-0.5">Updates the popularity index based on view counts and favorite counts.</div>
@@ -193,7 +193,7 @@ export default function DashboardHeader() {
                   </div>
 
                   {/* Action 2 */}
-                  <div className="bg-[#0c0c0c] border border-[#1e1e1e] rounded-xl p-4 flex items-center justify-between gap-4">
+                  <div className="bg-[#0c0c0c] border border-[#1e1e1e] rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
                       <div className="text-sm font-semibold text-[#f0e6c8]">Rebuild Personalized Recommendations</div>
                       <div className="text-xs text-[#8a8a8a] mt-0.5">Recalculates suggestion list matrices for all users database-wide.</div>
@@ -208,7 +208,7 @@ export default function DashboardHeader() {
                   </div>
 
                   {/* Action 3 */}
-                  <div className="bg-[#0c0c0c] border border-[#1e1e1e] rounded-xl p-4 flex items-center justify-between gap-4">
+                  <div className="bg-[#0c0c0c] border border-[#1e1e1e] rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
                       <div className="text-sm font-semibold text-[#f0e6c8]">Prune Chat Logs (Keep top 100)</div>
                       <div className="text-xs text-[#8a8a8a] mt-0.5">Deletes older AI chatbot logs to optimize database capacity.</div>

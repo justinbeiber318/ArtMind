@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux';
 import Navbar from './components/Navbar.jsx';
 import Footer from './components/Footer.jsx';
 import ChatbotWidget from './components/ChatbotWidget.jsx';
+import ScrollToTopButton from './components/ScrollToTopButton.jsx';
 import { selectIsAuthed, selectIsAdmin } from './features/auth/authSlice.js';
 
 import Home from './pages/Home.jsx';
@@ -35,7 +36,7 @@ export default function App() {
   return (
     <>
       {!isHome && !isAdminArea && <Navbar />}
-      <main>
+      <main className={!isHome && !isAdminArea ? 'site-main site-main--with-header' : 'site-main'}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/gallery" element={<Gallery />} />
@@ -55,6 +56,7 @@ export default function App() {
       </main>
       {!isHome && !isAdminArea && <Footer />}
       {!isHome && !isAdminArea && <ChatbotWidget />}
+      {!isHome && !isAdminArea && <ScrollToTopButton />}
     </>
   );
 }

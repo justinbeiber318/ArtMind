@@ -4,14 +4,16 @@ import { motion } from 'framer-motion';
 import { fadeUp } from '../../lib/animations';
 import GlassCard from './GlassCard';
 
-export default function DataTable({ title, subtitle, icon, head, rows, loading, error, actions }) {
+import { cn } from '../../lib/cn';
+
+export default function DataTable({ title, subtitle, icon, head, rows, loading, error, actions, className }) {
   return (
-    <motion.div variants={fadeUp} initial="hidden" animate="visible" className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
+    <motion.div variants={fadeUp} initial="hidden" animate="visible" className={cn('space-y-4', className)}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <div className="flex items-center gap-2 text-[#f0e6c8] font-semibold">
             {icon}
-            {title}
+            <span className="truncate">{title}</span>
           </div>
           {subtitle && (
             <div className="text-xs text-[#8a8a8a] mt-0.5">
@@ -19,7 +21,7 @@ export default function DataTable({ title, subtitle, icon, head, rows, loading, 
             </div>
           )}
         </div>
-        {actions && <div className="flex items-center gap-2">{actions}</div>}
+        {actions && <div className="flex flex-wrap items-center gap-2 sm:justify-end">{actions}</div>}
       </div>
 
       {error && (
@@ -31,7 +33,7 @@ export default function DataTable({ title, subtitle, icon, head, rows, loading, 
 
       <GlassCard className="overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[760px] text-sm">
             <thead>
               <tr className="border-b border-[#242424]">
                 {head.map((h, i) => (
