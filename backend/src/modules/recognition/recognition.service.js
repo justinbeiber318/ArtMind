@@ -1,5 +1,5 @@
 import sharp from "sharp";
-import { prisma } from "../../config/prisma.js";
+import { db } from "../../config/database.js";
 import { extractDominantColors } from "./colorExtractor.js";
 import { ApiError } from "../../utils/ApiError.js";
 
@@ -208,7 +208,7 @@ export const recognitionService = {
     }
 
     // Surface a few real gallery paintings that share the detected style/colours.
-    const recommendations = await prisma.painting.findMany({
+    const recommendations = await db.painting.findMany({
       where: {
         OR: [
           { style: { name: classification.style } },
@@ -239,7 +239,7 @@ export const recognitionService = {
       recommendations,
     };
 
-    const history = await prisma.uploadedImage.create({
+    const history = await db.uploadedImage.create({
       data: {
         userId: userId ?? null,
         imageUrl: imageUrl ?? "",
@@ -256,13 +256,13 @@ export const recognitionService = {
         confidence: result.confidence,
       },
     });
-    await prisma.analytics.create({ data: { metric: "recognition" } });
+    await db.analytics.create({ data: { metric: "recognition" } });
 
     return { ...result, id: history.id, imageUrl, thumbnailUrl, createdAt: history.createdAt };
   },
 
   async history(userId) {
-    const items = await prisma.uploadedImage.findMany({
+    const items = await db.uploadedImage.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
       take: 50,
@@ -271,11 +271,11 @@ export const recognitionService = {
   },
 
   async getHistoryItem(userId, id) {
-    const item = await prisma.uploadedImage.findFirst({ where: { id, userId } });
+    const item = await db.uploadedImage.findFirst({ where: { id, userId } });
     if (!item) throw ApiError.notFound("Recognition result not found");
     const record = normalizeHistoryRecord(item);
     const recommendations = record.recommendationIds.length
-      ? await prisma.painting.findMany({
+      ? await db.painting.findMany({
         where: { id: { in: record.recommendationIds } },
         include: { artist: true, category: true, style: true },
       })
@@ -284,9 +284,9 @@ export const recognitionService = {
   },
 
   async deleteHistoryItem(userId, id) {
-    const item = await prisma.uploadedImage.findFirst({ where: { id, userId } });
+    const item = await db.uploadedImage.findFirst({ where: { id, userId } });
     if (!item) throw ApiError.notFound("Recognition result not found");
-    await prisma.uploadedImage.delete({ where: { id } });
+    await db.uploadedImage.delete({ where: { id } });
     return { deleted: true };
   },
 };

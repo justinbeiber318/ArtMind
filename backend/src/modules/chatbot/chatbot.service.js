@@ -1,5 +1,5 @@
 import { env } from '../../config/env.js';
-import { prisma } from '../../config/prisma.js';
+import { db } from '../../config/database.js';
 import { ApiError } from '../../utils/ApiError.js';
 
 const SYSTEM_PROMPT = `You are the Aurelis gallery concierge - a knowledgeable, concise art assistant.
@@ -97,7 +97,7 @@ export const chatbotService = {
     const tokensUsed = completion.usage?.total_tokens ?? null;
 
     try {
-      await prisma.chatLog.create({
+      await db.chatLog.create({
         data: { userId: userId ?? null, prompt: message, response: reply, tokensUsed },
       });
     } catch (err) {

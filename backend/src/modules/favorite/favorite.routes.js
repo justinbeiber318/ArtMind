@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { prisma } from '../../config/prisma.js';
+import { db } from '../../config/database.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { requireAuth, requireUser } from '../../middleware/auth.js';
 import { recommendationService } from '../recommendation/recommendation.service.js';
@@ -9,7 +9,7 @@ router.use(requireAuth);
 router.use(requireUser);
 
 router.get('/', asyncHandler(async (req, res) => {
-  const favorites = await prisma.favorite.findMany({
+  const favorites = await db.favorite.findMany({
     where: { userId: req.user.id },
     orderBy: { createdAt: 'desc' },
     include: { painting: { include: { artist: true, style: true, category: true } } },
@@ -21,16 +21,16 @@ router.get('/', asyncHandler(async (req, res) => {
 router.post('/:paintingId', asyncHandler(async (req, res) => {
   const userId = req.user.id;
   const paintingId = Number(req.params.paintingId);
-  const existing = await prisma.favorite.findUnique({
+  const existing = await db.favorite.findUnique({
     where: { userId_paintingId: { userId, paintingId } },
   });
 
   let favorited;
   if (existing) {
-    await prisma.favorite.delete({ where: { id: existing.id } });
+    await db.favorite.delete({ where: { id: existing.id } });
     favorited = false;
   } else {
-    await prisma.favorite.create({ data: { userId, paintingId } });
+    await db.favorite.create({ data: { userId, paintingId } });
     favorited = true;
   }
 

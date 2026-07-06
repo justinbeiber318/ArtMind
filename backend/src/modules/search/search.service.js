@@ -1,4 +1,4 @@
-import { prisma } from '../../config/prisma.js';
+import { db } from '../../config/database.js';
 import { env } from '../../config/env.js';
 
 // Known colour vocabulary mapped to representative hex values used in seed data.
@@ -24,9 +24,9 @@ const SORT_HINTS = {
 export const searchService = {
   async resolveVocabulary() {
     const [categories, styles, artists] = await Promise.all([
-      prisma.category.findMany({ select: { name: true, slug: true } }),
-      prisma.style.findMany({ select: { name: true, slug: true } }),
-      prisma.artist.findMany({ select: { name: true, slug: true } }),
+      db.category.findMany({ select: { name: true, slug: true } }),
+      db.style.findMany({ select: { name: true, slug: true } }),
+      db.artist.findMany({ select: { name: true, slug: true } }),
     ]);
     return { categories, styles, artists };
   },
@@ -106,7 +106,7 @@ Return ONLY minified JSON, no prose.`;
     const { items, total } = await paintingService.list(filters, pagination);
 
     // Log for analytics.
-    await prisma.analytics.create({
+    await db.analytics.create({
       data: { metric: 'search', metadata: { query: text, filters } },
     });
 

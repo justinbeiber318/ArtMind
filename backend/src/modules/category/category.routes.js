@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { prisma } from '../../config/prisma.js';
+import { db } from '../../config/database.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { uniqueSlug } from '../../utils/slug.js';
 import { requireAuth, requireAdmin } from '../../middleware/auth.js';
@@ -11,14 +11,14 @@ const bodySchema = z.object({ body: z.object({ name: z.string().min(2) }) });
 
 async function uniqueSlugForModel(model, name, currentId) {
   return uniqueSlug(name, async (s) => {
-    const item = await prisma[model].findUnique({ where: { slug: s } });
+    const item = await db[model].findUnique({ where: { slug: s } });
     return Boolean(item && item.id !== currentId);
   });
 }
 
 // Categories with painting counts — drives the "Trending Categories" home section.
 router.get('/', asyncHandler(async (_req, res) => {
-  const items = await prisma.category.findMany({
+  const items = await db.category.findMany({
     orderBy: { name: 'asc' },
     include: { _count: { select: { paintings: true } } },
   });
@@ -26,7 +26,7 @@ router.get('/', asyncHandler(async (_req, res) => {
 }));
 
 router.get('/styles', asyncHandler(async (_req, res) => {
-  const items = await prisma.style.findMany({
+  const items = await db.style.findMany({
     orderBy: { name: 'asc' },
     include: { _count: { select: { paintings: true } } },
   });
@@ -34,7 +34,7 @@ router.get('/styles', asyncHandler(async (_req, res) => {
 }));
 
 router.get('/surfaces', asyncHandler(async (_req, res) => {
-  const groups = await prisma.painting.groupBy({
+  const groups = await db.painting.groupBy({
     by: ['surface'],
     where: { surface: { not: null } },
     _count: { surface: true },
@@ -51,22 +51,22 @@ router.get('/surfaces', asyncHandler(async (_req, res) => {
 
 router.post('/', requireAuth, requireAdmin, validate(bodySchema), asyncHandler(async (req, res) => {
   const slug = await uniqueSlug(req.body.name, (s) =>
-    prisma.category.findUnique({ where: { slug: s } }).then(Boolean));
-  const cat = await prisma.category.create({ data: { name: req.body.name, slug } });
+    db.category.findUnique({ where: { slug: s } }).then(Boolean));
+  const cat = await db.category.create({ data: { name: req.body.name, slug } });
   res.status(201).json({ success: true, data: cat });
 }));
 
 router.post('/styles', requireAuth, requireAdmin, validate(bodySchema), asyncHandler(async (req, res) => {
   const slug = await uniqueSlug(req.body.name, (s) =>
-    prisma.style.findUnique({ where: { slug: s } }).then(Boolean));
-  const style = await prisma.style.create({ data: { name: req.body.name, slug } });
+    db.style.findUnique({ where: { slug: s } }).then(Boolean));
+  const style = await db.style.create({ data: { name: req.body.name, slug } });
   res.status(201).json({ success: true, data: style });
 }));
 
 router.patch('/styles/:id', requireAuth, requireAdmin, validate(bodySchema), asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
   const slug = await uniqueSlugForModel('style', req.body.name, id);
-  const style = await prisma.style.update({
+  const style = await db.style.update({
     where: { id },
     data: { name: req.body.name, slug },
     include: { _count: { select: { paintings: true } } },
@@ -75,13 +75,13 @@ router.patch('/styles/:id', requireAuth, requireAdmin, validate(bodySchema), asy
 }));
 
 router.delete('/styles/:id', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
-  await prisma.style.delete({ where: { id: Number(req.params.id) } });
+  await db.style.delete({ where: { id: Number(req.params.id) } });
   res.json({ success: true, data: { message: 'Style deleted' } });
 }));
 
 router.patch('/surfaces/:name', requireAuth, requireAdmin, validate(bodySchema), asyncHandler(async (req, res) => {
   const currentName = decodeURIComponent(req.params.name);
-  await prisma.painting.updateMany({
+  await db.painting.updateMany({
     where: { surface: currentName },
     data: { surface: req.body.name },
   });
@@ -90,7 +90,7 @@ router.patch('/surfaces/:name', requireAuth, requireAdmin, validate(bodySchema),
 
 router.delete('/surfaces/:name', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
   const currentName = decodeURIComponent(req.params.name);
-  await prisma.painting.updateMany({
+  await db.painting.updateMany({
     where: { surface: currentName },
     data: { surface: null },
   });
@@ -100,7 +100,7 @@ router.delete('/surfaces/:name', requireAuth, requireAdmin, asyncHandler(async (
 router.patch('/:id', requireAuth, requireAdmin, validate(bodySchema), asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
   const slug = await uniqueSlugForModel('category', req.body.name, id);
-  const cat = await prisma.category.update({
+  const cat = await db.category.update({
     where: { id },
     data: { name: req.body.name, slug },
     include: { _count: { select: { paintings: true } } },
@@ -109,7 +109,7 @@ router.patch('/:id', requireAuth, requireAdmin, validate(bodySchema), asyncHandl
 }));
 
 router.delete('/:id', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
-  await prisma.category.delete({ where: { id: Number(req.params.id) } });
+  await db.category.delete({ where: { id: Number(req.params.id) } });
   res.json({ success: true, data: { message: 'Category deleted' } });
 }));
 

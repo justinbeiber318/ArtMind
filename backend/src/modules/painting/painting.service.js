@@ -1,10 +1,10 @@
-import { prisma } from '../../config/prisma.js';
+import { db } from '../../config/database.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { uniqueSlug } from '../../utils/slug.js';
 
 const includeRefs = { artist: true, category: true, style: true };
 
-// Translates the gallery filter/sort query into a Prisma query.
+// Translates the gallery filter/sort query into a db query.
 function buildWhere(q) {
   const where = {};
   if (q.category) where.category = { slug: q.category };
@@ -56,12 +56,12 @@ export const paintingService = {
   async list(query, { skip, take }) {
     const where = buildPublicWhere(query);
     const [items, total] = await Promise.all([
-      prisma.painting.findMany({
+      db.painting.findMany({
         where, skip, take,
         orderBy: buildOrderBy(query.sort),
         include: includeRefs,
       }),
-      prisma.painting.count({ where }),
+      db.painting.count({ where }),
     ]);
     return { items, total };
   },
@@ -69,18 +69,18 @@ export const paintingService = {
   async listAdmin(query, { skip, take }) {
     const where = buildWhere(query);
     const [items, total] = await Promise.all([
-      prisma.painting.findMany({
+      db.painting.findMany({
         where, skip, take,
         orderBy: buildOrderBy(query.sort),
         include: includeRefs,
       }),
-      prisma.painting.count({ where }),
+      db.painting.count({ where }),
     ]);
     return { items, total };
   },
 
   async getBySlug(slug, viewer) {
-    const painting = await prisma.painting.findUnique({
+    const painting = await db.painting.findUnique({
       where: { slug },
       include: includeRefs,
     });
@@ -93,12 +93,12 @@ export const paintingService = {
     }
 
     // Atomic view increment; record history for signed-in viewers.
-    await prisma.painting.update({
+    await db.painting.update({
       where: { id: painting.id },
       data: { viewCount: { increment: 1 } },
     });
     if (viewer?.id) {
-      await prisma.viewHistory.create({
+      await db.viewHistory.create({
         data: { userId: viewer.id, paintingId: painting.id },
       });
     }
@@ -109,10 +109,10 @@ export const paintingService = {
   // Content-based "similar" lookup: same style/category, ranked by shared
   // dominant colours, excluding the source painting.
   async getSimilar(paintingId, limit = 6) {
-    const source = await prisma.painting.findUnique({ where: { id: paintingId } });
+    const source = await db.painting.findUnique({ where: { id: paintingId } });
     if (!source) throw ApiError.notFound('Painting not found');
 
-    const candidates = await prisma.painting.findMany({
+    const candidates = await db.painting.findMany({
       where: {
         AND: [
           { id: { not: paintingId } },
@@ -141,9 +141,9 @@ export const paintingService = {
 
   async create(data) {
     const slug = await uniqueSlug(data.title, (s) =>
-      prisma.painting.findUnique({ where: { slug: s } }).then(Boolean),
+      db.painting.findUnique({ where: { slug: s } }).then(Boolean),
     );
-    return prisma.painting.create({
+    return db.painting.create({
       data: { ...data, slug },
       include: includeRefs,
     });
@@ -154,19 +154,19 @@ export const paintingService = {
     categoryId, styleId, medium, surface, year,
     imageUrl, thumbnailUrl, dominantColors,
   }) {
-    let artist = await prisma.artist.findFirst({ where: { name: artistName } });
+    let artist = await db.artist.findFirst({ where: { name: artistName } });
     if (!artist) {
       const artistSlug = await uniqueSlug(artistName, (s) =>
-        prisma.artist.findUnique({ where: { slug: s } }).then(Boolean),
+        db.artist.findUnique({ where: { slug: s } }).then(Boolean),
       );
-      artist = await prisma.artist.create({ data: { name: artistName, slug: artistSlug } });
+      artist = await db.artist.create({ data: { name: artistName, slug: artistSlug } });
     }
 
     const slug = await uniqueSlug(title, (s) =>
-      prisma.painting.findUnique({ where: { slug: s } }).then(Boolean),
+      db.painting.findUnique({ where: { slug: s } }).then(Boolean),
     );
 
-    return prisma.painting.create({
+    return db.painting.create({
       data: {
         title,
         slug,
@@ -187,7 +187,7 @@ export const paintingService = {
   },
 
   async listByUploader(userId) {
-    return prisma.painting.findMany({
+    return db.painting.findMany({
       where: { uploadedById: userId },
       orderBy: { createdAt: 'desc' },
       include: includeRefs,
@@ -195,14 +195,14 @@ export const paintingService = {
   },
 
   async update(id, data) {
-    return prisma.painting.update({ where: { id }, data, include: includeRefs });
+    return db.painting.update({ where: { id }, data, include: includeRefs });
   },
 
   async remove(id) {
-    await prisma.painting.delete({ where: { id } });
+    await db.painting.delete({ where: { id } });
   },
 
   async saveAiSummary(id, summary) {
-    return prisma.painting.update({ where: { id }, data: { aiSummary: summary } });
+    return db.painting.update({ where: { id }, data: { aiSummary: summary } });
   },
 };

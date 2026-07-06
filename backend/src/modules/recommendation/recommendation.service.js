@@ -1,4 +1,4 @@
-import { prisma } from '../../config/prisma.js';
+import { db } from '../../config/database.js';
 
 const publicPaintingWhere = {
   OR: [
@@ -20,8 +20,8 @@ const publicPaintingWhere = {
 export const recommendationService = {
   async buildUserProfile(userId) {
     const [favorites, history] = await Promise.all([
-      prisma.favorite.findMany({ where: { userId }, include: { painting: true } }),
-      prisma.viewHistory.findMany({
+      db.favorite.findMany({ where: { userId }, include: { painting: true } }),
+      db.viewHistory.findMany({
         where: { userId }, take: 100, orderBy: { viewedAt: 'desc' },
         include: { painting: true },
       }),
@@ -53,20 +53,20 @@ export const recommendationService = {
 
   // Users who share favourites with this user → their other favourites are candidates.
   async collaborativeCandidates(userId, seen) {
-    const myFavs = await prisma.favorite.findMany({
+    const myFavs = await db.favorite.findMany({
       where: { userId }, select: { paintingId: true },
     });
     const myIds = myFavs.map((f) => f.paintingId);
     if (myIds.length === 0) return new Map();
 
-    const neighbours = await prisma.favorite.findMany({
+    const neighbours = await db.favorite.findMany({
       where: { paintingId: { in: myIds }, userId: { not: userId } },
       select: { userId: true },
     });
     const neighbourIds = [...new Set(neighbours.map((n) => n.userId))];
     if (neighbourIds.length === 0) return new Map();
 
-    const theirFavs = await prisma.favorite.findMany({
+    const theirFavs = await db.favorite.findMany({
       where: { userId: { in: neighbourIds } },
       select: { paintingId: true },
     });
@@ -84,7 +84,7 @@ export const recommendationService = {
     const collab = await this.collaborativeCandidates(userId, profile.seen);
 
     // Candidate pool: everything the user hasn't already engaged with.
-    const candidates = await prisma.painting.findMany({
+    const candidates = await db.painting.findMany({
       where: {
         AND: [
           { id: { notIn: [...profile.seen] } },
@@ -120,10 +120,10 @@ export const recommendationService = {
       .slice(0, 24);
 
     // Replace the user's recommendation set transactionally.
-    await prisma.$transaction([
-      prisma.recommendation.deleteMany({ where: { userId } }),
+    await db.$transaction([
+      db.recommendation.deleteMany({ where: { userId } }),
       ...top.map((t) =>
-        prisma.recommendation.create({
+        db.recommendation.create({
           data: { userId, paintingId: t.paintingId, score: t.score, reason: t.reason },
         }),
       ),
@@ -133,7 +133,7 @@ export const recommendationService = {
   },
 
   async getForUser(userId, limit = 12) {
-    let recs = await prisma.recommendation.findMany({
+    let recs = await db.recommendation.findMany({
       where: { userId, painting: publicPaintingWhere },
       orderBy: { score: 'desc' },
       take: limit,
@@ -143,7 +143,7 @@ export const recommendationService = {
     // Cold start: no recs yet → seed from trending and persist.
     if (recs.length === 0) {
       await this.rebuildForUser(userId);
-      recs = await prisma.recommendation.findMany({
+      recs = await db.recommendation.findMany({
         where: { userId, painting: publicPaintingWhere }, orderBy: { score: 'desc' }, take: limit,
         include: { painting: { include: { artist: true, style: true } } },
       });
@@ -153,7 +153,7 @@ export const recommendationService = {
 
   // Anonymous / preview recommendations for the home page.
   async getTrendingPreview(limit = 6) {
-    return prisma.painting.findMany({
+    return db.painting.findMany({
       where: publicPaintingWhere,
       orderBy: { trendingScore: 'desc' }, take: limit,
       include: { artist: true, style: true },
