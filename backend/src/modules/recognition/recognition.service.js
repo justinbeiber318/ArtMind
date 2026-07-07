@@ -177,7 +177,7 @@ function normalizeHistoryRecord(item) {
 async function markFavorited(paintings, userId) {
   if (!userId || paintings.length === 0) return paintings.map((p) => ({ ...p, isFavorited: false }));
 
-  const favorites = await prisma.favorite.findMany({
+  const favorites = await db.favorite.findMany({
     where: { userId, paintingId: { in: paintings.map((p) => p.id) } },
     select: { paintingId: true },
   });
@@ -219,11 +219,7 @@ export const recognitionService = {
     }
 
     // Surface a few real gallery paintings that share the detected style/colours.
-<<<<<<< HEAD
-    const rawRecommendations = await prisma.painting.findMany({
-=======
-    const recommendations = await db.painting.findMany({
->>>>>>> 561a62b9d81ee3d723357fedb9ff4b465d876d4c
+    const rawRecommendations = await db.painting.findMany({
       where: {
         AND: [
           {
@@ -300,20 +296,14 @@ export const recognitionService = {
     const item = await db.uploadedImage.findFirst({ where: { id, userId } });
     if (!item) throw ApiError.notFound("Recognition result not found");
     const record = normalizeHistoryRecord(item);
-<<<<<<< HEAD
     const rawRecommendations = record.recommendationIds.length
-      ? await prisma.painting.findMany({
+      ? await db.painting.findMany({
         where: {
           AND: [
             { id: { in: record.recommendationIds } },
             { OR: [{ uploadedById: null }, { featured: true }] },
           ],
         },
-=======
-    const recommendations = record.recommendationIds.length
-      ? await db.painting.findMany({
-        where: { id: { in: record.recommendationIds } },
->>>>>>> 561a62b9d81ee3d723357fedb9ff4b465d876d4c
         include: { artist: true, category: true, style: true },
       })
       : [];

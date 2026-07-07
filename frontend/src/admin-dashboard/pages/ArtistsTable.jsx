@@ -177,7 +177,6 @@ export default function ArtistsTable() {
   );
 }
 
-<<<<<<< HEAD
 function normalizeArtist(data) {
   const optionalText = (value) => {
     const text = String(value || '').trim();
@@ -191,16 +190,6 @@ function normalizeArtist(data) {
     portraitUrl: optionalText(data.portraitUrl),
     bornYear: data.bornYear ? Number(data.bornYear) : null,
     diedYear: data.diedYear ? Number(data.diedYear) : null,
-=======
-function normalizeArtist(data, isUpdate = false) {
-  return {
-    name: data.name,
-    bio: data.bio || undefined,
-    nationality: data.nationality || undefined,
-    portraitUrl: data.portraitUrl || undefined,
-    bornYear: data.bornYear ? Number(data.bornYear) : undefined,
-    diedYear: data.diedYear ? Number(data.diedYear) : (isUpdate ? null : undefined),
->>>>>>> 561a62b9d81ee3d723357fedb9ff4b465d876d4c
   };
 }
 

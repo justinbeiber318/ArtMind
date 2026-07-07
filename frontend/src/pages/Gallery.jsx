@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { paintingApi, categoryApi, artistApi } from '../api/endpoints.js';
@@ -11,7 +11,6 @@ const SORTS = [
   { value: 'trending', key: 'trending' },
 ];
 
-<<<<<<< HEAD
 const SURFACES = [
   { value: 'canvas', label: 'Canvas' },
   { value: 'panel', label: 'Panel' },
@@ -20,19 +19,8 @@ const SURFACES = [
   { value: 'board', label: 'Board' },
 ];
 
-const COLOR_THEMES = [
-  { hex: '#1E3A5F', label: 'Navy' },
-  { hex: '#2D2D2D', label: 'Charcoal' },
-  { hex: '#8B2E2E', label: 'Crimson' },
-  { hex: '#D9B23A', label: 'Gold' },
-  { hex: '#3B5F3B', label: 'Green' },
-  { hex: '#F5F5F5', label: 'Ivory' },
-];
-
 const PAGE_SIZE = 12;
-=======
-const PAGE_SIZE = 9;
->>>>>>> 561a62b9d81ee3d723357fedb9ff4b465d876d4c
+const TAXONOMY_STALE_TIME = 5 * 60 * 1000;
 
 export default function Gallery() {
   const { t } = useTranslation();
@@ -61,6 +49,7 @@ export default function Gallery() {
 
   useEffect(() => {
     let ts = 0;
+    const passive = { passive: true };
     
     const handleWheel = (e) => {
       if (window.scrollY === 0 && e.deltaY < 0) {
@@ -85,23 +74,22 @@ export default function Gallery() {
       }
     };
 
-    window.addEventListener('wheel', handleWheel);
-    window.addEventListener('touchstart', handleTouchStart);
-    window.addEventListener('touchmove', handleTouchMove);
+    window.addEventListener('wheel', handleWheel, passive);
+    window.addEventListener('touchstart', handleTouchStart, passive);
+    window.addEventListener('touchmove', handleTouchMove, passive);
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      window.removeEventListener('wheel', handleWheel);
-      window.removeEventListener('touchstart', handleTouchStart);
-      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('wheel', handleWheel, passive);
+      window.removeEventListener('touchstart', handleTouchStart, passive);
+      window.removeEventListener('touchmove', handleTouchMove, passive);
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [navigate]);
 
-  const categories = useQuery({ queryKey: ['categories'], queryFn: categoryApi.list });
-  const styles = useQuery({ queryKey: ['styles'], queryFn: categoryApi.styles });
-  const surfaces = useQuery({ queryKey: ['surfaces'], queryFn: categoryApi.surfaces });
-  const artists = useQuery({ queryKey: ['artists', 'all'], queryFn: () => artistApi.list({ limit: 50 }) });
+  const categories = useQuery({ queryKey: ['categories'], queryFn: categoryApi.list, staleTime: TAXONOMY_STALE_TIME });
+  const styles = useQuery({ queryKey: ['styles'], queryFn: categoryApi.styles, staleTime: TAXONOMY_STALE_TIME });
+  const artists = useQuery({ queryKey: ['artists', 'all'], queryFn: () => artistApi.list({ limit: 50 }), staleTime: TAXONOMY_STALE_TIME });
 
   const queryParams = useMemo(() => {
     const p = { sort, limit: PAGE_SIZE };
@@ -122,35 +110,31 @@ export default function Gallery() {
     },
   });
 
-  const paintings = data?.pages.flatMap((pg) => pg.data) || [];
+  const paintings = useMemo(() => data?.pages.flatMap((pg) => pg.data) || [], [data]);
   const total = data?.pages[0]?.meta?.total ?? 0;
 
-  const scrollToTop = () => {
+  const scrollToTop = useCallback(() => {
     window.requestAnimationFrame(() => {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
-  };
+  }, []);
 
-  const updateFilter = (key, value) => {
+  const updateFilter = useCallback((key, value) => {
     setFilters((f) => ({ ...f, [key]: f[key] === value ? '' : value }));
     scrollToTop();
-  };
+  }, [scrollToTop]);
 
-  const onSearchSubmit = (e) => {
+  const onSearchSubmit = useCallback((e) => {
     e.preventDefault();
     setSearchTerm(search.trim());
     scrollToTop();
-  };
+  }, [scrollToTop, search]);
 
-  const clearAll = () => {
+  const clearAll = useCallback(() => {
     setFilters({ category: '', style: '', artist: '', surface: '' });
     setSearch(''); setSearchTerm(''); setSort('newest');
-<<<<<<< HEAD
     navigate('/gallery', { replace: true });
-=======
-    scrollToTop();
->>>>>>> 561a62b9d81ee3d723357fedb9ff4b465d876d4c
-  };
+  }, [navigate]);
 
   return (
     <>
@@ -196,15 +180,9 @@ export default function Gallery() {
           </FilterGroup>
 
           <FilterGroup label={t('surface')}>
-<<<<<<< HEAD
             {SURFACES.map((s) => (
               <FilterChip key={s.value} active={filters.surface === s.value}
                 onClick={() => updateFilter('surface', s.value)}>{s.label}</FilterChip>
-=======
-            {(surfaces.data || []).map((s) => (
-              <FilterChip key={s.name} active={filters.surface === s.name}
-                onClick={() => updateFilter('surface', s.name)}>{s.name}</FilterChip>
->>>>>>> 561a62b9d81ee3d723357fedb9ff4b465d876d4c
             ))}
           </FilterGroup>
 
@@ -214,14 +192,10 @@ export default function Gallery() {
 
         {/* Results */}
         <div>
-<<<<<<< HEAD
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 24 }}>
             <Link to="/virtual-gallery" className="btn btn--ghost">
               {t('virtual_gallery', { defaultValue: 'Virtual Museum' })}
             </Link>
-=======
-          <div className="gallery-toolbar">
->>>>>>> 561a62b9d81ee3d723357fedb9ff4b465d876d4c
             <span className="muted" style={{ fontSize: '0.85rem' }}>{t('sort_by')}</span>
             <select value={sort} onChange={(e) => { setSort(e.target.value); scrollToTop(); }}
               style={{ padding: '8px 12px', border: '1px solid var(--border)', fontFamily: 'var(--font-body)', background: 'var(--white)', color: 'var(--dark-gray)' }}>
@@ -254,16 +228,16 @@ export default function Gallery() {
   );
 }
 
-function FilterGroup({ label, children }) {
+const FilterGroup = memo(function FilterGroup({ label, children }) {
   return (
     <div style={{ marginBottom: 22 }}>
       <div style={{ fontSize: '0.72rem', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--dark-gray)', fontWeight: 600, marginBottom: 10 }}>{label}</div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{children}</div>
     </div>
   );
-}
+});
 
-function FilterChip({ active, onClick, children }) {
+const FilterChip = memo(function FilterChip({ active, onClick, children }) {
   return (
     <button type="button" onClick={(e) => { e.currentTarget.blur(); onClick(); }}
       style={{
@@ -274,4 +248,4 @@ function FilterChip({ active, onClick, children }) {
         transition: 'all 0.15s ease',
       }}>{children}</button>
   );
-}
+});

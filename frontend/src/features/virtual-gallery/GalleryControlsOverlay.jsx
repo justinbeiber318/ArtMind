@@ -15,21 +15,6 @@ export default function GalleryControlsOverlay({
         }}
       />
 
-      <div className="pointer-events-none absolute right-4 top-4 z-20">
-        <Link
-          to="/"
-          className="pointer-events-auto rounded-md px-3 py-2 text-xs font-medium tracking-wide"
-          style={{
-            background: 'rgba(20,27,46,0.65)',
-            color: '#f5efdd',
-            border: '1px solid rgba(217,178,58,0.4)',
-            backdropFilter: 'blur(8px)',
-          }}
-        >
-          Exit Gallery
-        </Link>
-      </div>
-
       <div className="pointer-events-none absolute bottom-4 left-4 z-20">
         <div
           className="rounded-md px-4 py-2 text-xs"
@@ -106,13 +91,27 @@ export default function GalleryControlsOverlay({
               Walk with <b>WASD</b>, look with your mouse. Approach any painting and press{' '}
               <b style={{ color: '#d9b23a' }}>E</b> to view details.
             </p>
-            <button
-              onClick={onRequestLock}
-              className="mt-7 rounded-sm px-8 py-3 text-xs font-semibold uppercase transition hover:brightness-110"
-              style={{ background: 'linear-gradient(180deg, #e8c76a, #c9a24a)', color: '#1a1f30', letterSpacing: '0.25em', boxShadow: '0 8px 24px rgba(217,178,58,0.25)' }}
-            >
-              Enter Exhibition
-            </button>
+            <div className="mt-7 grid gap-3 sm:grid-cols-2">
+              <button
+                onClick={onRequestLock}
+                className="flex min-h-[70px] items-center justify-center rounded-sm px-6 py-3 text-center text-xs font-semibold uppercase leading-relaxed transition hover:brightness-110"
+                style={{ background: 'linear-gradient(180deg, #e8c76a, #c9a24a)', color: '#1a1f30', letterSpacing: '0.2em', boxShadow: '0 8px 24px rgba(217,178,58,0.25)' }}
+              >
+                Enter Exhibition
+              </button>
+              <Link
+                to="/gallery"
+                className="flex min-h-[70px] items-center justify-center rounded-sm px-6 py-3 text-center text-xs font-semibold uppercase leading-relaxed transition hover:brightness-110"
+                style={{
+                  border: '1px solid rgba(217,178,58,0.42)',
+                  background: 'rgba(255,255,255,0.03)',
+                  color: '#f5efdd',
+                  letterSpacing: '0.2em',
+                }}
+              >
+                Exit Museum
+              </Link>
+            </div>
             <p className="mt-4 text-[11px] opacity-50" style={{ fontFamily: "'Inter', sans-serif", letterSpacing: 0.5 }}>
               Press Esc anytime to release the cursor.
             </p>

@@ -84,26 +84,15 @@ router.get('/:slug', asyncHandler(async (req, res) => {
 }));
 
 router.post('/', requireAuth, requireAdmin, validate(bodySchema), asyncHandler(async (req, res) => {
-<<<<<<< HEAD
   const clean = cleanArtistData(req.body);
   const slug = await uniqueSlug(clean.name, (s) =>
-    prisma.artist.findUnique({ where: { slug: s } }).then(Boolean));
-  const artist = await prisma.artist.create({ data: { ...clean, slug } });
+    db.artist.findUnique({ where: { slug: s } }).then(Boolean));
+  const artist = await db.artist.create({ data: { ...clean, slug } });
   res.status(201).json({ success: true, data: artist });
 }));
 
 router.patch('/:id', requireAuth, requireAdmin, validate(updateSchema), asyncHandler(async (req, res) => {
-  const artist = await prisma.artist.update({ where: { id: Number(req.params.id) }, data: cleanArtistData(req.body) });
-=======
-  const slug = await uniqueSlug(req.body.name, (s) =>
-    db.artist.findUnique({ where: { slug: s } }).then(Boolean));
-  const artist = await db.artist.create({ data: { ...req.body, slug } });
-  res.status(201).json({ success: true, data: artist });
-}));
-
-router.patch('/:id', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
-  const artist = await db.artist.update({ where: { id: Number(req.params.id) }, data: req.body });
->>>>>>> 561a62b9d81ee3d723357fedb9ff4b465d876d4c
+  const artist = await db.artist.update({ where: { id: Number(req.params.id) }, data: cleanArtistData(req.body) });
   res.json({ success: true, data: artist });
 }));
 

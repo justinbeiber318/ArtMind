@@ -1,6 +1,6 @@
 import { verifyAccessToken } from '../utils/tokens.js';
 import { ApiError } from '../utils/ApiError.js';
-import { prisma } from '../config/prisma.js';
+import { db } from '../config/database.js';
 
 async function activeUserFromToken(token) {
   let decoded;
@@ -10,7 +10,7 @@ async function activeUserFromToken(token) {
     throw ApiError.unauthorized('Invalid or expired token');
   }
 
-  const user = await prisma.user.findUnique({
+  const user = await db.user.findUnique({
     where: { id: decoded.id },
     select: { id: true, role: true, email: true, refreshToken: true },
   });

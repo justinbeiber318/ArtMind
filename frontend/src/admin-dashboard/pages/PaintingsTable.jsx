@@ -254,16 +254,10 @@ function normalizePainting(data, isEdit = false) {
     thumbnailUrl: data.thumbnailUrl.trim() || (isEdit ? null : data.imageUrl.trim()),
     artistId: Number(data.artistId),
     categoryId: Number(data.categoryId),
-<<<<<<< HEAD
     styleId: data.styleId ? Number(data.styleId) : (isEdit ? null : undefined),
     surface: surface ? surface.toLowerCase() : surface,
     medium: optionalText(data.medium),
     price: data.price !== '' ? Number(data.price) : (isEdit ? null : undefined),
-=======
-    styleId: data.styleId ? Number(data.styleId) : undefined,
-    surface: data.surface || undefined,
-    medium: data.medium || undefined,
->>>>>>> 561a62b9d81ee3d723357fedb9ff4b465d876d4c
     featured: Boolean(data.featured),
   };
 }

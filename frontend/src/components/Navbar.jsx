@@ -72,7 +72,7 @@ export default function Navbar() {
           className="site-header__logo"
           style={{ opacity: 0 }}
         >
-          AURE<span style={{ color: 'var(--navy)' }}>LIS</span>
+          AURELIS
         </Link>
 
         <nav className="site-header__nav" aria-label="Primary navigation">

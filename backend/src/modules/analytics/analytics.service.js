@@ -25,7 +25,6 @@ function calcTrend(current, previous) {
 
 export const analyticsService = {
   async overview() {
-<<<<<<< HEAD
     const currentMonth = monthBounds(0);
     const previousMonth = monthBounds(-1);
 
@@ -44,32 +43,21 @@ export const analyticsService = {
       searchesPrev,
       recognitionsPrev,
     ] = await Promise.all([
-      prisma.user.count(),
-      prisma.painting.count(),
-      prisma.artist.count(),
-      prisma.painting.aggregate({ _sum: { viewCount: true } }),
-      prisma.analytics.count({ where: { metric: 'search' } }),
-      prisma.analytics.count({ where: { metric: 'recognition' } }),
-      prisma.user.count({ where: { createdAt: { gte: previousMonth.start, lt: currentMonth.start } } }),
-      prisma.painting.count({ where: { createdAt: { gte: previousMonth.start, lt: currentMonth.start } } }),
-      prisma.artist.count({ where: { createdAt: { gte: previousMonth.start, lt: currentMonth.start } } }),
-      prisma.analytics.count({ where: { metric: 'page_view', recordedAt: { gte: currentMonth.start, lt: currentMonth.end } } }),
-      prisma.analytics.count({ where: { metric: 'page_view', recordedAt: { gte: previousMonth.start, lt: currentMonth.start } } }),
-      prisma.analytics.count({ where: { metric: 'search', recordedAt: { gte: previousMonth.start, lt: currentMonth.start } } }),
-      prisma.analytics.count({ where: { metric: 'recognition', recordedAt: { gte: previousMonth.start, lt: currentMonth.start } } }),
+      db.user.count(),
+      db.painting.count(),
+      db.artist.count(),
+      db.painting.aggregate({ _sum: { viewCount: true } }),
+      db.analytics.count({ where: { metric: 'search' } }),
+      db.analytics.count({ where: { metric: 'recognition' } }),
+      db.user.count({ where: { createdAt: { gte: previousMonth.start, lt: currentMonth.start } } }),
+      db.painting.count({ where: { createdAt: { gte: previousMonth.start, lt: currentMonth.start } } }),
+      db.artist.count({ where: { createdAt: { gte: previousMonth.start, lt: currentMonth.start } } }),
+      db.analytics.count({ where: { metric: 'page_view', recordedAt: { gte: currentMonth.start, lt: currentMonth.end } } }),
+      db.analytics.count({ where: { metric: 'page_view', recordedAt: { gte: previousMonth.start, lt: currentMonth.start } } }),
+      db.analytics.count({ where: { metric: 'search', recordedAt: { gte: previousMonth.start, lt: currentMonth.start } } }),
+      db.analytics.count({ where: { metric: 'recognition', recordedAt: { gte: previousMonth.start, lt: currentMonth.start } } }),
     ]);
 
-=======
-    const [users, paintings, artists, totalViews, searches, recognitions] =
-      await Promise.all([
-        db.user.count(),
-        db.painting.count(),
-        db.artist.count(),
-        db.painting.aggregate({ _sum: { viewCount: true } }),
-        db.analytics.count({ where: { metric: 'search' } }),
-        db.analytics.count({ where: { metric: 'recognition' } }),
-      ]);
->>>>>>> 561a62b9d81ee3d723357fedb9ff4b465d876d4c
     return {
       users,
       paintings,

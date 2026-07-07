@@ -77,13 +77,16 @@ function appendFieldWhere(meta, key, value, clauses, params, alias = '') {
         clauses.push(`${column} <> ?`);
         params.push(value.not);
       }
-    } else if ('gte' in value) {
+    }
+    if ('gte' in value) {
       clauses.push(`${column} >= ?`);
       params.push(value.gte);
-    } else if ('lt' in value) {
+    }
+    if ('lt' in value) {
       clauses.push(`${column} < ?`);
       params.push(value.lt);
-    } else if ('array_contains' in value) {
+    }
+    if ('array_contains' in value) {
       clauses.push(`JSON_CONTAINS(${column}, JSON_QUOTE(?))`);
       params.push(value.array_contains);
     }

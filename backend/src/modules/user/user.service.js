@@ -28,9 +28,9 @@ async function assertCanChangeAdmin(actorId, targetId, change) {
   }
 
   if (change.delete || (change.role && change.role !== 'ADMIN')) {
-    const target = await prisma.user.findUnique({ where: { id: targetId }, select: { role: true } });
+    const target = await db.user.findUnique({ where: { id: targetId }, select: { role: true } });
     if (target?.role === 'ADMIN') {
-      const admins = await prisma.user.count({ where: { role: 'ADMIN' } });
+      const admins = await db.user.count({ where: { role: 'ADMIN' } });
       if (admins <= 1) throw ApiError.badRequest('At least one admin account must remain');
     }
   }
@@ -73,11 +73,7 @@ export const userService = {
     if (!ok) throw ApiError.badRequest('Current password is incorrect');
 
     const passwordHash = await hashPassword(newPassword);
-<<<<<<< HEAD
-    await prisma.user.update({ where: { id: userId }, data: { passwordHash, refreshToken: null } });
-=======
-    await db.user.update({ where: { id: userId }, data: { passwordHash } });
->>>>>>> 561a62b9d81ee3d723357fedb9ff4b465d876d4c
+    await db.user.update({ where: { id: userId }, data: { passwordHash, refreshToken: null } });
   },
 
   // Aggregates everything the user dashboard needs in one round trip.
@@ -133,18 +129,11 @@ export const userService = {
   },
 
   async createUser({ name, email, password, role = 'USER', avatarUrl, bio, status = 'Active' }) {
-<<<<<<< HEAD
     if (!password) throw ApiError.badRequest('Password is required');
-    const existing = await prisma.user.findUnique({ where: { email } });
-    if (existing) throw ApiError.conflict('Email already registered');
-    const passwordHash = await hashPassword(password);
-    const user = await prisma.user.create({
-=======
     const existing = await db.user.findUnique({ where: { email } });
     if (existing) throw ApiError.conflict('Email already registered');
-    const passwordHash = await hashPassword(password || 'Password123!');
+    const passwordHash = await hashPassword(password);
     const user = await db.user.create({
->>>>>>> 561a62b9d81ee3d723357fedb9ff4b465d876d4c
       data: {
         name: name.trim(),
         email: email.trim(),
@@ -175,25 +164,15 @@ export const userService = {
     return presentUser(user);
   },
 
-<<<<<<< HEAD
   async setRole(userId, role, actorId) {
     await assertCanChangeAdmin(actorId, userId, { role });
-    const user = await prisma.user.update({ where: { id: userId }, data: { role }, select: safeSelect });
+    const user = await db.user.update({ where: { id: userId }, data: { role }, select: safeSelect });
     return presentUser(user);
   },
 
   async setStatus(userId, status, actorId) {
     await assertCanChangeAdmin(actorId, userId, { status });
-    const user = await prisma.user.update({
-=======
-  async setRole(userId, role) {
-    const user = await db.user.update({ where: { id: userId }, data: { role }, select: safeSelect });
-    return presentUser(user);
-  },
-
-  async setStatus(userId, status) {
     const user = await db.user.update({
->>>>>>> 561a62b9d81ee3d723357fedb9ff4b465d876d4c
       where: { id: userId },
       data: { refreshToken: status === 'Blocked' ? '__BLOCKED__' : null },
       select: safeSelect,
@@ -201,13 +180,8 @@ export const userService = {
     return presentUser(user);
   },
 
-<<<<<<< HEAD
   async deleteUser(userId, actorId) {
     await assertCanChangeAdmin(actorId, userId, { delete: true });
-    await prisma.user.delete({ where: { id: userId } });
-=======
-  async deleteUser(userId) {
     await db.user.delete({ where: { id: userId } });
->>>>>>> 561a62b9d81ee3d723357fedb9ff4b465d876d4c
   },
 };
