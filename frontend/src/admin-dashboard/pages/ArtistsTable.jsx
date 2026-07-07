@@ -172,13 +172,18 @@ export default function ArtistsTable() {
 }
 
 function normalizeArtist(data) {
+  const optionalText = (value) => {
+    const text = String(value || '').trim();
+    return text || null;
+  };
+
   return {
-    name: data.name,
-    bio: data.bio || undefined,
-    nationality: data.nationality || undefined,
-    portraitUrl: data.portraitUrl || undefined,
-    bornYear: data.bornYear ? Number(data.bornYear) : undefined,
-    diedYear: data.diedYear ? Number(data.diedYear) : undefined,
+    name: data.name.trim(),
+    bio: optionalText(data.bio),
+    nationality: optionalText(data.nationality),
+    portraitUrl: optionalText(data.portraitUrl),
+    bornYear: data.bornYear ? Number(data.bornYear) : null,
+    diedYear: data.diedYear ? Number(data.diedYear) : null,
   };
 }
 

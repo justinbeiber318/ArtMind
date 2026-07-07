@@ -7,17 +7,57 @@ function lastNDays(n) {
   return d;
 }
 
+function monthBounds(monthOffset = 0) {
+  const start = new Date();
+  start.setDate(1);
+  start.setHours(0, 0, 0, 0);
+  start.setMonth(start.getMonth() + monthOffset, 1);
+
+  const end = new Date(start);
+  end.setMonth(end.getMonth() + 1, 1);
+  return { start, end };
+}
+
+function calcTrend(current, previous) {
+  if (previous === 0) return current > 0 ? 100 : 0;
+  return Math.round(((current - previous) / previous) * 100);
+}
+
 export const analyticsService = {
   async overview() {
-    const [users, paintings, artists, totalViews, searches, recognitions] =
-      await Promise.all([
-        prisma.user.count(),
-        prisma.painting.count(),
-        prisma.artist.count(),
-        prisma.painting.aggregate({ _sum: { viewCount: true } }),
-        prisma.analytics.count({ where: { metric: 'search' } }),
-        prisma.analytics.count({ where: { metric: 'recognition' } }),
-      ]);
+    const currentMonth = monthBounds(0);
+    const previousMonth = monthBounds(-1);
+
+    const [
+      users,
+      paintings,
+      artists,
+      totalViews,
+      searches,
+      recognitions,
+      usersPrev,
+      paintingsPrev,
+      artistsPrev,
+      pageViewsCurrent,
+      pageViewsPrev,
+      searchesPrev,
+      recognitionsPrev,
+    ] = await Promise.all([
+      prisma.user.count(),
+      prisma.painting.count(),
+      prisma.artist.count(),
+      prisma.painting.aggregate({ _sum: { viewCount: true } }),
+      prisma.analytics.count({ where: { metric: 'search' } }),
+      prisma.analytics.count({ where: { metric: 'recognition' } }),
+      prisma.user.count({ where: { createdAt: { gte: previousMonth.start, lt: currentMonth.start } } }),
+      prisma.painting.count({ where: { createdAt: { gte: previousMonth.start, lt: currentMonth.start } } }),
+      prisma.artist.count({ where: { createdAt: { gte: previousMonth.start, lt: currentMonth.start } } }),
+      prisma.analytics.count({ where: { metric: 'page_view', recordedAt: { gte: currentMonth.start, lt: currentMonth.end } } }),
+      prisma.analytics.count({ where: { metric: 'page_view', recordedAt: { gte: previousMonth.start, lt: currentMonth.start } } }),
+      prisma.analytics.count({ where: { metric: 'search', recordedAt: { gte: previousMonth.start, lt: currentMonth.start } } }),
+      prisma.analytics.count({ where: { metric: 'recognition', recordedAt: { gte: previousMonth.start, lt: currentMonth.start } } }),
+    ]);
+
     return {
       users,
       paintings,
@@ -25,6 +65,14 @@ export const analyticsService = {
       totalViews: totalViews._sum.viewCount || 0,
       searches,
       recognitions,
+      trends: {
+        users: calcTrend(users, usersPrev),
+        paintings: calcTrend(paintings, paintingsPrev),
+        artists: calcTrend(artists, artistsPrev),
+        totalViews: calcTrend(pageViewsCurrent, pageViewsPrev),
+        searches: calcTrend(searches, searchesPrev),
+        recognitions: calcTrend(recognitions, recognitionsPrev),
+      },
     };
   },
 

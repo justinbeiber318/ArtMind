@@ -39,21 +39,21 @@ export const userController = {
   }),
 
   update: asyncHandler(async (req, res) => {
-    res.json({ success: true, data: await userService.updateUser(Number(req.params.id), req.body) });
+    res.json({ success: true, data: await userService.updateUser(Number(req.params.id), req.body, req.user.id) });
   }),
 
   setRole: asyncHandler(async (req, res) => {
-    const data = await userService.setRole(Number(req.params.id), req.body.role);
+    const data = await userService.setRole(Number(req.params.id), req.body.role, req.user.id);
     res.json({ success: true, data });
   }),
 
   setStatus: asyncHandler(async (req, res) => {
-    const data = await userService.setStatus(Number(req.params.id), req.body.status);
+    const data = await userService.setStatus(Number(req.params.id), req.body.status, req.user.id);
     res.json({ success: true, data });
   }),
 
   remove: asyncHandler(async (req, res) => {
-    await userService.deleteUser(Number(req.params.id));
+    await userService.deleteUser(Number(req.params.id), req.user.id);
     res.json({ success: true, data: { message: 'User deleted' } });
   }),
 };

@@ -72,10 +72,20 @@ export const authService = {
     return tokens;
   },
 
-  async logout(userId) {
-    await prisma.user.update({
-      where: { id: userId },
-      data: { refreshToken: null },
-    });
+  async logout(userId, refreshToken) {
+    if (userId) {
+      await prisma.user.updateMany({
+        where: { id: userId, refreshToken: { not: '__BLOCKED__' } },
+        data: { refreshToken: null },
+      });
+      return;
+    }
+
+    if (refreshToken) {
+      await prisma.user.updateMany({
+        where: { AND: [{ refreshToken }, { refreshToken: { not: '__BLOCKED__' } }] },
+        data: { refreshToken: null },
+      });
+    }
   },
 };

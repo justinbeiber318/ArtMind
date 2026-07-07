@@ -7,11 +7,13 @@ import { upload } from '../../middleware/upload.js';
 
 const router = Router();
 
+const nullableUrl = z.string().url().nullable().optional();
+
 const updateSchema = z.object({
   body: z.object({
     name: z.string().min(2).max(80).optional(),
-    bio: z.string().max(2000).optional(),
-    avatarUrl: z.string().url().optional(),
+    bio: z.string().max(2000).nullable().optional(),
+    avatarUrl: nullableUrl,
   }),
 });
 
@@ -26,20 +28,26 @@ const adminUserSchema = z.object({
   body: z.object({
     name: z.string().min(2).max(80),
     email: z.string().email(),
-    password: z.string().min(8).optional(),
-    avatarUrl: z.string().url().optional().or(z.literal('')),
-    bio: z.string().max(2000).optional(),
+    password: z.string().min(8),
+    avatarUrl: nullableUrl,
+    bio: z.string().max(2000).nullable().optional(),
     role: z.enum(['USER', 'ADMIN']).optional(),
     status: z.enum(['Active', 'Blocked']).optional(),
   }),
 });
 
 const adminUserUpdateSchema = z.object({
-  body: adminUserSchema.shape.body.partial(),
+  body: adminUserSchema.shape.body.extend({
+    password: z.string().min(8).optional(),
+  }).partial(),
 });
 
 const statusSchema = z.object({
   body: z.object({ status: z.enum(['Active', 'Blocked']) }),
+});
+
+const roleSchema = z.object({
+  body: z.object({ role: z.enum(['USER', 'ADMIN']) }),
 });
 
 router.use(requireAuth);
@@ -53,7 +61,7 @@ router.get('/dashboard', requireUser, userController.dashboard);
 router.get('/', requireAdmin, userController.list);
 router.post('/', requireAdmin, validate(adminUserSchema), userController.create);
 router.patch('/:id', requireAdmin, validate(adminUserUpdateSchema), userController.update);
-router.patch('/:id/role', requireAdmin, userController.setRole);
+router.patch('/:id/role', requireAdmin, validate(roleSchema), userController.setRole);
 router.patch('/:id/status', requireAdmin, validate(statusSchema), userController.setStatus);
 router.delete('/:id', requireAdmin, userController.remove);
 

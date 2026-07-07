@@ -44,7 +44,7 @@ export default function PaintingsTable() {
 
   const savePainting = useMutation({
     mutationFn: (payload) => {
-      const body = normalizePainting(payload.form);
+      const body = normalizePainting(payload.form, Boolean(payload.id));
       return payload.id ? paintingApi.update(payload.id, body) : paintingApi.create(body);
     },
     onSuccess: () => {
@@ -200,18 +200,26 @@ export default function PaintingsTable() {
   );
 }
 
-function normalizePainting(data) {
+function normalizePainting(data, isEdit = false) {
+  const optionalText = (value) => {
+    const text = String(value || '').trim();
+    if (text) return text;
+    return isEdit ? null : undefined;
+  };
+
+  const surface = optionalText(data.surface);
+
   return {
-    title: data.title,
-    description: data.description,
-    imageUrl: data.imageUrl,
-    thumbnailUrl: data.thumbnailUrl || data.imageUrl,
+    title: data.title.trim(),
+    description: data.description.trim(),
+    imageUrl: data.imageUrl.trim(),
+    thumbnailUrl: data.thumbnailUrl.trim() || (isEdit ? null : data.imageUrl.trim()),
     artistId: Number(data.artistId),
     categoryId: Number(data.categoryId),
-    styleId: data.styleId ? Number(data.styleId) : undefined,
-    surface: data.surface || undefined,
-    medium: data.medium || undefined,
-    price: data.price ? Number(data.price) : undefined,
+    styleId: data.styleId ? Number(data.styleId) : (isEdit ? null : undefined),
+    surface: surface ? surface.toLowerCase() : surface,
+    medium: optionalText(data.medium),
+    price: data.price !== '' ? Number(data.price) : (isEdit ? null : undefined),
     featured: Boolean(data.featured),
   };
 }

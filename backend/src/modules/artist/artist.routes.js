@@ -10,16 +10,41 @@ import { getPagination, buildMeta } from '../../utils/pagination.js';
 
 const router = Router();
 
+const optionalText = z.string().nullable().optional();
+const optionalYear = z.number().int().nullable().optional();
+const optionalUrl = z.string().url().nullable().optional();
+
 const bodySchema = z.object({
   body: z.object({
-    name: z.string().min(2),
-    nationality: z.string().optional(),
+    name: z.string().trim().min(2),
+    nationality: z.string().trim().optional(),
     bornYear: z.number().int().optional(),
     diedYear: z.number().int().optional(),
     bio: z.string().optional(),
     portraitUrl: z.string().url().optional(),
   }),
 });
+
+const updateSchema = z.object({
+  body: z.object({
+    name: z.string().trim().min(2).optional(),
+    nationality: optionalText,
+    bornYear: optionalYear,
+    diedYear: optionalYear,
+    bio: optionalText,
+    portraitUrl: optionalUrl,
+  }),
+});
+
+function cleanArtistData(data) {
+  const next = { ...data };
+  ['name', 'nationality', 'bio', 'portraitUrl'].forEach((key) => {
+    if (next[key] === undefined || next[key] === null) return;
+    const text = String(next[key]).trim();
+    next[key] = text || null;
+  });
+  return next;
+}
 
 router.get('/', asyncHandler(async (req, res) => {
   const { page, limit, skip, take } = getPagination(req.query, 20);
@@ -59,14 +84,15 @@ router.get('/:slug', asyncHandler(async (req, res) => {
 }));
 
 router.post('/', requireAuth, requireAdmin, validate(bodySchema), asyncHandler(async (req, res) => {
-  const slug = await uniqueSlug(req.body.name, (s) =>
+  const clean = cleanArtistData(req.body);
+  const slug = await uniqueSlug(clean.name, (s) =>
     prisma.artist.findUnique({ where: { slug: s } }).then(Boolean));
-  const artist = await prisma.artist.create({ data: { ...req.body, slug } });
+  const artist = await prisma.artist.create({ data: { ...clean, slug } });
   res.status(201).json({ success: true, data: artist });
 }));
 
-router.patch('/:id', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
-  const artist = await prisma.artist.update({ where: { id: Number(req.params.id) }, data: req.body });
+router.patch('/:id', requireAuth, requireAdmin, validate(updateSchema), asyncHandler(async (req, res) => {
+  const artist = await prisma.artist.update({ where: { id: Number(req.params.id) }, data: cleanArtistData(req.body) });
   res.json({ success: true, data: artist });
 }));
 

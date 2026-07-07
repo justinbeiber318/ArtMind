@@ -36,7 +36,7 @@ export default function DashboardHeader() {
   const fetchHealthData = async () => {
     setLoadingHealth(true);
     try {
-      const { data } = await analyticsApi.healthCheck();
+      const data = await analyticsApi.healthCheck();
       setHealthData(data);
     } catch {
       toast.error('Could not fetch system health data');
@@ -66,6 +66,7 @@ export default function DashboardHeader() {
       document.body.appendChild(link);
       link.click();
       link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
       toast.success('Report exported successfully');
     } catch (e) {
       console.error(e);
@@ -78,7 +79,7 @@ export default function DashboardHeader() {
   const runQuickAction = async (actionKey, apiCall, successMsg) => {
     setRunningAction(actionKey);
     try {
-      const res = await apiCall();
+      await apiCall();
       toast.success(successMsg);
       // Refresh health stats to capture upload size, etc. if relevant
       fetchHealthData();

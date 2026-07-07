@@ -208,13 +208,19 @@ export default function UsersTable() {
 }
 
 function normalizeUser(data, isEdit) {
+  const optionalText = (value) => {
+    const text = String(value || '').trim();
+    if (text) return text;
+    return isEdit ? null : undefined;
+  };
+
   const payload = {
-    avatarUrl: data.avatarUrl || undefined,
-    name: data.name,
-    email: data.email,
+    avatarUrl: optionalText(data.avatarUrl),
+    name: data.name.trim(),
+    email: data.email.trim(),
     role: data.role,
     status: data.status,
-    bio: data.bio || undefined,
+    bio: optionalText(data.bio),
   };
 
   if (data.password || !isEdit) {

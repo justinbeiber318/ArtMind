@@ -4,7 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { paintingApi, categoryApi } from '../api/endpoints.js';
 import PaintingCard from '../components/PaintingCard.jsx';
 
-const MAX_BYTES = 8 * 1024 * 1024;
+const MAX_BYTES = 5 * 1024 * 1024;
+const ACCEPTED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 
 export default function Upload() {
   const navigate = useNavigate();
@@ -27,7 +28,12 @@ export default function Upload() {
 
   const pickFile = (f) => {
     if (!f) return;
-    if (f.size > MAX_BYTES) { setError('Image is too large (max 8 MB).'); return; }
+    if (!ACCEPTED_TYPES.includes(f.type)) {
+      setError('Unsupported file. Please use JPG, JPEG, PNG or WEBP.');
+      return;
+    }
+    if (f.size > MAX_BYTES) { setError('Image is too large (max 5 MB).'); return; }
+    if (preview && preview.startsWith('blob:')) URL.revokeObjectURL(preview);
     setError('');
     setFile(f);
     setPreview(URL.createObjectURL(f));
@@ -45,7 +51,7 @@ export default function Upload() {
       qc.invalidateQueries({ queryKey: ['gallery'] });
       navigate(`/paintings/${painting.slug}`);
     },
-    onError: (err) => setError(err?.response?.data?.message || 'Upload failed. Please try again.'),
+    onError: (err) => setError(err?.message || 'Upload failed. Please try again.'),
   });
 
   const onSubmit = (e) => {
@@ -88,7 +94,7 @@ export default function Upload() {
             ) : (
               <div>
                 <p style={{ fontWeight: 500 }}>Drop an image here</p>
-                <p className="muted" style={{ fontSize: '0.85rem', marginTop: 6 }}>or click to browse &middot; JPEG, PNG, WebP &middot; up to 8&nbsp;MB</p>
+                <p className="muted" style={{ fontSize: '0.85rem', marginTop: 6 }}>or click to browse &middot; JPEG, PNG, WebP &middot; up to 5&nbsp;MB</p>
               </div>
             )}
           </div>

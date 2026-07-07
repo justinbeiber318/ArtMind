@@ -31,7 +31,8 @@ export const authController = {
   }),
 
   logout: asyncHandler(async (req, res) => {
-    await authService.logout(req.user.id);
+    const token = req.cookies?.[REFRESH_COOKIE] || req.body?.refreshToken;
+    await authService.logout(req.user?.id, token);
     res.clearCookie(REFRESH_COOKIE, { path: '/api/auth' });
     res.json({ success: true, data: { message: 'Logged out' } });
   }),

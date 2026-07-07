@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSelector } from 'react-redux';
 import { jsPDF } from 'jspdf';
 import { paintingApi, favoriteApi } from '../api/endpoints.js';
@@ -10,6 +10,7 @@ import { gsap } from 'gsap';
 
 export default function PaintingDetails() {
   const { slug } = useParams();
+  const qc = useQueryClient();
   const authed = useSelector(selectIsAuthed);
   const isAdmin = useSelector(selectIsAdmin);
   const [favorited, setFavorited] = useState(false);
@@ -48,9 +49,17 @@ export default function PaintingDetails() {
     enabled: false,
   });
 
+  useEffect(() => {
+    if (painting) setFavorited(Boolean(painting.isFavorited));
+  }, [painting?.id, painting?.isFavorited]);
+
   const favoriteMutation = useMutation({
     mutationFn: () => favoriteApi.toggle(painting.id),
-    onSuccess: (res) => setFavorited(res.favorited),
+    onSuccess: (res) => {
+      setFavorited(res.favorited);
+      qc.invalidateQueries({ queryKey: ['favorites'] });
+      qc.invalidateQueries({ queryKey: ['painting', slug] });
+    },
   });
 
   if (isLoading) return <div className="spinner" />;
@@ -159,7 +168,7 @@ export default function PaintingDetails() {
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 32 }}>
             {authed && !isAdmin ? (
-              <button className="btn" onClick={() => favoriteMutation.mutate()} disabled={favoriteMutation.isPending}>
+              <button className="btn" onClick={() => favoriteMutation.mutate()} disabled={favoriteMutation.isPending || !painting?.id}>
                 {favorited ? '♥ In favorites' : '♡ Add to favorites'}
               </button>
             ) : !authed ? (

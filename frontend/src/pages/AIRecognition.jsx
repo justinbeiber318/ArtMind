@@ -231,7 +231,11 @@ function RecognitionResult({ result, preview }) {
 }
 
 function SimilarArtworkCard({ painting, isAuthed }) {
-  const [favorited, setFavorited] = useState(false);
+  const [favorited, setFavorited] = useState(Boolean(painting.isFavorited));
+
+  useEffect(() => {
+    setFavorited(Boolean(painting.isFavorited));
+  }, [painting.id, painting.isFavorited]);
   const favorite = useMutation({
     mutationFn: () => favoriteApi.toggle(painting.id),
     onSuccess: (res) => setFavorited(res.favorited),

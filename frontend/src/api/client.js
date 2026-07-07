@@ -3,7 +3,7 @@ import { store } from '../app/store.js';
 import { setAccessToken, logout } from '../features/auth/authSlice.js';
 
 export const api = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   withCredentials: true, // send the refresh cookie
 });
 
@@ -22,14 +22,16 @@ api.interceptors.response.use(
     const original = error.config;
     const status = error.response?.status;
 
-    if (status === 401 && !original._retried && !original.url.includes('/auth/')) {
+    if (status === 401 && original && !original._retried && !original.url?.includes('/auth/')) {
       original._retried = true;
       try {
         refreshing = refreshing || api.post('/auth/refresh');
         const { data } = await refreshing;
         refreshing = null;
-        store.dispatch(setAccessToken(data.data.accessToken));
-        original.headers.Authorization = `Bearer ${data.data.accessToken}`;
+        const accessToken = data?.data?.accessToken;
+        store.dispatch(setAccessToken(accessToken));
+        original.headers = original.headers || {};
+        original.headers.Authorization = `Bearer ${accessToken}`;
         return api(original);
       } catch (e) {
         refreshing = null;

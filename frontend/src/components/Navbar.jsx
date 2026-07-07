@@ -19,6 +19,7 @@ export default function Navbar() {
 
   const links = [
     { to: '/gallery', label: t('gallery'), icon: 'gallery' },
+    { to: '/virtual-gallery', label: t('virtual_gallery', { defaultValue: 'Virtual Museum' }), icon: 'museum' },
     { to: '/ai-search', label: t('ai_search'), icon: 'spark-search' },
     { to: '/ai-recognition', label: t('recognition'), icon: 'scan' },
   ];
@@ -41,9 +42,14 @@ export default function Navbar() {
   }, [user, isAdmin]);
 
   const handleLogout = async () => {
-    dispatch(logout());
-    navigate('/');
-    try { await authApi.logout(); } catch { /* ignore */ }
+    try {
+      await authApi.logout();
+    } catch {
+      /* ignore: clear local session even if the server request fails */
+    } finally {
+      dispatch(logout());
+      navigate('/', { replace: true });
+    }
   };
 
   const changeLanguage = (lang) => {
@@ -167,6 +173,7 @@ function Icon({ name }) {
 
   const paths = {
     gallery: <><rect x="4" y="5" width="16" height="14" rx="1.5" /><path d="M8 13l2.5-2.5L15 15l1.5-1.5L20 17" /><circle cx="15.5" cy="9.5" r="1" /></>,
+    museum: <><path d="M4 9.5l8-4.5 8 4.5" /><path d="M5 9.5h14" /><rect x="5.5" y="9.5" width="13" height="9.5" rx="1.2" /><path d="M8 9.5v9.5M12 9.5v9.5M16 9.5v9.5" /></>,
     'spark-search': <><circle cx="10.5" cy="10.5" r="5.5" /><path d="M16 16l4 4" /><path d="M19 3v4" /><path d="M21 5h-4" /></>,
     scan: <><path d="M4 8V5a1 1 0 0 1 1-1h3" /><path d="M16 4h3a1 1 0 0 1 1 1v3" /><path d="M20 16v3a1 1 0 0 1-1 1h-3" /><path d="M8 20H5a1 1 0 0 1-1-1v-3" /><path d="M8 12h8" /></>,
     upload: <><path d="M12 16V4" /><path d="M7 9l5-5 5 5" /><path d="M5 20h14" /></>,

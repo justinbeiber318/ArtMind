@@ -17,6 +17,7 @@ import Upload from './pages/Upload.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
 import AdminDashboard from './pages/AdminDashboard.jsx';
+import VirtualGallery from './pages/VirtualGallery.jsx';
 
 function Protected({ children, admin, userOnly }) {
   const authed = useSelector(selectIsAuthed);
@@ -31,13 +32,15 @@ export default function App() {
   const location = useLocation();
   const isHome = location.pathname === '/';
   const isAdminArea = location.pathname.startsWith('/admin');
+  const isImmersive = location.pathname.startsWith('/virtual-gallery');
 
   return (
     <>
-      {!isHome && !isAdminArea && <Navbar />}
+      {!isHome && !isAdminArea && !isImmersive && <Navbar />}
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/virtual-gallery" element={<VirtualGallery />} />
           <Route path="/gallery" element={<Gallery />} />
           <Route path="/paintings/:slug" element={<PaintingDetails />} />
           <Route path="/ai-search" element={<AISearch />} />
@@ -53,8 +56,8 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
-      {!isHome && !isAdminArea && <Footer />}
-      {!isHome && !isAdminArea && <ChatbotWidget />}
+      {!isHome && !isAdminArea && !isImmersive && <Footer />}
+      {!isHome && !isAdminArea && !isImmersive && <ChatbotWidget />}
     </>
   );
 }

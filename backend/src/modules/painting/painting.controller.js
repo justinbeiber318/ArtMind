@@ -31,7 +31,7 @@ export const paintingController = {
 
   // Generates (and caches) an AI summary for a painting on demand.
   aiSummary: asyncHandler(async (req, res) => {
-    const painting = await paintingService.getBySlug(req.params.slug, undefined);
+    const painting = await paintingService.getBySlug(req.params.slug, undefined, { trackView: false });
     if (painting.aiSummary) {
       return res.json({ success: true, data: { summary: painting.aiSummary, cached: true } });
     }

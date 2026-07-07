@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { paintingApi, categoryApi, artistApi } from '../api/endpoints.js';
 import PaintingCard from '../components/PaintingCard.jsx';
 import { gsap } from 'gsap';
@@ -12,15 +12,21 @@ const SORTS = [
   { value: 'trending', key: 'trending' },
 ];
 
-const SURFACES = ['Canvas', 'Panel', 'Paper', 'Linen', 'Board'];
+const SURFACES = [
+  { value: 'canvas', label: 'Canvas' },
+  { value: 'panel', label: 'Panel' },
+  { value: 'paper', label: 'Paper' },
+  { value: 'linen', label: 'Linen' },
+  { value: 'board', label: 'Board' },
+];
 
 const COLOR_THEMES = [
-  { hex: '#1e3a5f', label: 'Navy' },
-  { hex: '#2d2d2d', label: 'Charcoal' },
-  { hex: '#8b2e2e', label: 'Crimson' },
-  { hex: '#c9a227', label: 'Gold' },
-  { hex: '#3d6b4f', label: 'Green' },
-  { hex: '#f5f5f5', label: 'Ivory' },
+  { hex: '#1E3A5F', label: 'Navy' },
+  { hex: '#2D2D2D', label: 'Charcoal' },
+  { hex: '#8B2E2E', label: 'Crimson' },
+  { hex: '#D9B23A', label: 'Gold' },
+  { hex: '#3B5F3B', label: 'Green' },
+  { hex: '#F5F5F5', label: 'Ivory' },
 ];
 
 const PAGE_SIZE = 12;
@@ -49,9 +55,19 @@ export default function Gallery() {
   }, []);
 
   useEffect(() => {
-    const query = new URLSearchParams(location.search).get('search') || '';
+    const params = new URLSearchParams(location.search);
+    const query = params.get('search') || '';
     setSearch(query);
     setSearchTerm(query.trim());
+    setFilters({
+      category: params.get('category') || '',
+      style: params.get('style') || '',
+      artist: params.get('artist') || '',
+      surface: (params.get('surface') || '').toLowerCase(),
+      color: params.get('color') || '',
+    });
+    const nextSort = params.get('sort');
+    if (nextSort && SORTS.some((item) => item.value === nextSort)) setSort(nextSort);
   }, [location.search]);
 
   useEffect(() => {
@@ -127,6 +143,7 @@ export default function Gallery() {
   const clearAll = () => {
     setFilters({ category: '', style: '', artist: '', surface: '', color: '' });
     setSearch(''); setSearchTerm(''); setSort('newest');
+    navigate('/gallery', { replace: true });
   };
 
   return (
@@ -186,8 +203,8 @@ export default function Gallery() {
 
           <FilterGroup label={t('surface')}>
             {SURFACES.map((s) => (
-              <FilterChip key={s} active={filters.surface === s}
-                onClick={() => updateFilter('surface', s)}>{s}</FilterChip>
+              <FilterChip key={s.value} active={filters.surface === s.value}
+                onClick={() => updateFilter('surface', s.value)}>{s.label}</FilterChip>
             ))}
           </FilterGroup>
 
@@ -197,7 +214,10 @@ export default function Gallery() {
 
         {/* Results */}
         <div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+            <Link to="/virtual-gallery" className="btn btn--ghost">
+              {t('virtual_gallery', { defaultValue: 'Virtual Museum' })}
+            </Link>
             <span className="muted" style={{ fontSize: '0.85rem' }}>{t('sort_by')}</span>
             <select value={sort} onChange={(e) => setSort(e.target.value)}
               style={{ padding: '8px 12px', border: '1px solid var(--border)', fontFamily: 'var(--font-body)', background: 'var(--white)', color: 'var(--dark-gray)' }}>

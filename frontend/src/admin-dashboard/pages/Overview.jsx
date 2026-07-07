@@ -22,12 +22,12 @@ import ChartCard from '../components/ui/ChartCard';
 import MetricCard from '../components/ui/MetricCard';
 
 const buildMetrics = overview => [
-  { label: 'Total Users', value: overview?.users, icon: Users, color: 'blue', trend: +12 },
-  { label: 'Paintings', value: overview?.paintings, icon: ImageIcon, color: 'indigo', trend: +8 },
-  { label: 'Artists', value: overview?.artists, icon: Palette, color: 'violet', trend: +3 },
-  { label: 'Total Views', value: overview?.totalViews, icon: Eye, color: 'cyan', trend: +24 },
-  { label: 'AI Searches', value: overview?.searches, icon: Bot, color: 'emerald', trend: +31 },
-  { label: 'Recognitions', value: overview?.recognitions, icon: Zap, color: 'amber', trend: +17 },
+  { label: 'Total Users', value: overview?.users, icon: Users, color: 'blue', trend: overview?.trends?.users },
+  { label: 'Paintings', value: overview?.paintings, icon: ImageIcon, color: 'indigo', trend: overview?.trends?.paintings },
+  { label: 'Artists', value: overview?.artists, icon: Palette, color: 'violet', trend: overview?.trends?.artists },
+  { label: 'Total Views', value: overview?.totalViews, icon: Eye, color: 'cyan', trend: overview?.trends?.totalViews },
+  { label: 'AI Searches', value: overview?.searches, icon: Bot, color: 'emerald', trend: overview?.trends?.searches },
+  { label: 'Recognitions', value: overview?.recognitions, icon: Zap, color: 'amber', trend: overview?.trends?.recognitions },
 ];
 
 export default function Overview() {

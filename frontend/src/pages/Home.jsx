@@ -32,8 +32,8 @@ export default function Home() {
       title: t('home_title_2'),
       sub: t('home_sub_2'),
       image: '/scene1.jpeg',
-      ctaLink: '/gallery',
-      ctaLabel: t('enter_gallery'),
+      ctaLink: '/virtual-gallery',
+      ctaLabel: t('enter_virtual_gallery', { defaultValue: 'Enter the Museum' }),
     },
     {
       tag: t('home_tag_3'),

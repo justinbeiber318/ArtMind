@@ -1,5 +1,6 @@
 {
   "gallery": "Gallery",
+  "virtual_gallery": "Virtual Museum",
   "ai_search": "AI Search",
   "recognition": "Recognition",
   "dashboard": "Dashboard",
@@ -21,6 +22,7 @@
   "home_tag_2": "Beyond the frames",
   "home_title_2": "The Gallery",
   "home_sub_2": "Enter a corridor where brushstrokes whisper stories of a thousand lifetimes",
+  "enter_virtual_gallery": "Enter the Museum",
   "enter_gallery": "Enter the Gallery",
   "home_tag_3": "Deep in the vault",
   "home_title_3": "The Library",

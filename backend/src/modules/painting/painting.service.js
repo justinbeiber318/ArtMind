@@ -4,25 +4,49 @@ import { uniqueSlug } from '../../utils/slug.js';
 
 const includeRefs = { artist: true, category: true, style: true };
 
+function cleanOptionalString(value, { lowercase = false } = {}) {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  const text = String(value).trim();
+  if (!text) return null;
+  return lowercase ? text.toLowerCase() : text;
+}
+
+function colorVariants(hex) {
+  const text = String(hex || '').trim();
+  if (!text) return [];
+  return [...new Set([text, text.toUpperCase(), text.toLowerCase()])];
+}
+
 // Translates the gallery filter/sort query into a Prisma query.
 function buildWhere(q) {
-  const where = {};
-  if (q.category) where.category = { slug: q.category };
-  if (q.style) where.style = { slug: q.style };
-  if (q.artist) where.artist = { slug: q.artist };
-  if (q.surface) where.surface = q.surface;
+  const and = [];
+
+  if (q.category) and.push({ category: { slug: q.category } });
+  if (q.style) and.push({ style: { slug: q.style } });
+  if (q.artist) and.push({ artist: { slug: q.artist } });
+
+  const surface = cleanOptionalString(q.surface, { lowercase: true });
+  if (surface) and.push({ surface });
+
   if (q.search) {
-    where.OR = [
-      { title: { contains: q.search } },
-      { description: { contains: q.search } },
-      { artist: { name: { contains: q.search } } },
-    ];
+    and.push({
+      OR: [
+        { title: { contains: q.search } },
+        { description: { contains: q.search } },
+        { artist: { name: { contains: q.search } } },
+      ],
+    });
   }
-  // Color theme filter against the dominant_colors JSON array.
-  if (q.color) {
-    where.dominantColors = { array_contains: q.color };
+
+  // Color theme filter against the dominant_colors JSON array. The seed data and
+  // extracted colors may differ in hex casing, so accept both upper/lowercase.
+  const colors = colorVariants(q.color);
+  if (colors.length) {
+    and.push({ OR: colors.map((color) => ({ dominantColors: { array_contains: color } })) });
   }
-  return where;
+
+  return and.length ? { AND: and } : {};
 }
 
 function publicVisibilityWhere() {
@@ -52,6 +76,31 @@ function buildOrderBy(sort) {
   }
 }
 
+function sanitizePaintingData(data) {
+  const next = { ...data };
+
+  if ('title' in next && typeof next.title === 'string') next.title = next.title.trim();
+  if ('description' in next && typeof next.description === 'string') next.description = next.description.trim();
+  if ('imageUrl' in next && typeof next.imageUrl === 'string') next.imageUrl = next.imageUrl.trim();
+  if ('thumbnailUrl' in next) next.thumbnailUrl = cleanOptionalString(next.thumbnailUrl);
+  if ('medium' in next) next.medium = cleanOptionalString(next.medium);
+  if ('surface' in next) next.surface = cleanOptionalString(next.surface, { lowercase: true });
+
+  return next;
+}
+
+async function withFavoriteState(painting, viewer) {
+  if (!painting) return painting;
+  if (!viewer?.id || viewer.role === 'ADMIN') return { ...painting, isFavorited: false };
+
+  const favorite = await prisma.favorite.findUnique({
+    where: { userId_paintingId: { userId: viewer.id, paintingId: painting.id } },
+    select: { id: true },
+  });
+
+  return { ...painting, isFavorited: Boolean(favorite) };
+}
+
 export const paintingService = {
   async list(query, { skip, take }) {
     const where = buildPublicWhere(query);
@@ -79,7 +128,8 @@ export const paintingService = {
     return { items, total };
   },
 
-  async getBySlug(slug, viewer) {
+  async getBySlug(slug, viewer, options = {}) {
+    const { trackView = true } = options;
     const painting = await prisma.painting.findUnique({
       where: { slug },
       include: includeRefs,
@@ -92,18 +142,22 @@ export const paintingService = {
       throw ApiError.notFound('Painting not found');
     }
 
-    // Atomic view increment; record history for signed-in viewers.
-    await prisma.painting.update({
-      where: { id: painting.id },
-      data: { viewCount: { increment: 1 } },
-    });
-    if (viewer?.id) {
-      await prisma.viewHistory.create({
-        data: { userId: viewer.id, paintingId: painting.id },
+    let viewCount = painting.viewCount;
+    if (trackView) {
+      // Atomic view increment; record history for signed-in viewers.
+      await prisma.painting.update({
+        where: { id: painting.id },
+        data: { viewCount: { increment: 1 } },
       });
+      if (viewer?.id) {
+        await prisma.viewHistory.create({
+          data: { userId: viewer.id, paintingId: painting.id },
+        });
+      }
+      viewCount += 1;
     }
-    painting.viewCount += 1;
-    return painting;
+
+    return withFavoriteState({ ...painting, viewCount }, viewer);
   },
 
   // Content-based "similar" lookup: same style/category, ranked by shared
@@ -140,11 +194,12 @@ export const paintingService = {
   },
 
   async create(data) {
-    const slug = await uniqueSlug(data.title, (s) =>
+    const clean = sanitizePaintingData(data);
+    const slug = await uniqueSlug(clean.title, (s) =>
       prisma.painting.findUnique({ where: { slug: s } }).then(Boolean),
     );
     return prisma.painting.create({
-      data: { ...data, slug },
+      data: { ...clean, slug },
       include: includeRefs,
     });
   },
@@ -154,27 +209,29 @@ export const paintingService = {
     categoryId, styleId, medium, surface, year,
     imageUrl, thumbnailUrl, dominantColors,
   }) {
-    let artist = await prisma.artist.findFirst({ where: { name: artistName } });
+    const cleanArtistName = String(artistName || '').trim();
+    let artist = await prisma.artist.findFirst({ where: { name: cleanArtistName } });
     if (!artist) {
-      const artistSlug = await uniqueSlug(artistName, (s) =>
+      const artistSlug = await uniqueSlug(cleanArtistName, (s) =>
         prisma.artist.findUnique({ where: { slug: s } }).then(Boolean),
       );
-      artist = await prisma.artist.create({ data: { name: artistName, slug: artistSlug } });
+      artist = await prisma.artist.create({ data: { name: cleanArtistName, slug: artistSlug } });
     }
 
-    const slug = await uniqueSlug(title, (s) =>
+    const cleanTitle = String(title || '').trim();
+    const slug = await uniqueSlug(cleanTitle, (s) =>
       prisma.painting.findUnique({ where: { slug: s } }).then(Boolean),
     );
 
     return prisma.painting.create({
       data: {
-        title,
+        title: cleanTitle,
         slug,
-        description,
+        description: String(description || '').trim(),
         imageUrl,
         thumbnailUrl: thumbnailUrl || imageUrl,
-        medium: medium || null,
-        surface: surface || null,
+        medium: cleanOptionalString(medium),
+        surface: cleanOptionalString(surface, { lowercase: true }),
         year: year ? Number(year) : null,
         dominantColors: dominantColors || [],
         artistId: artist.id,
@@ -195,7 +252,7 @@ export const paintingService = {
   },
 
   async update(id, data) {
-    return prisma.painting.update({ where: { id }, data, include: includeRefs });
+    return prisma.painting.update({ where: { id }, data: sanitizePaintingData(data), include: includeRefs });
   },
 
   async remove(id) {
