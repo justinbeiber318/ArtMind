@@ -33,8 +33,14 @@ export const artistApi = {
 export const categoryApi = {
   list: () => unwrap(api.get('/categories')),
   styles: () => unwrap(api.get('/categories/styles')),
+  surfaces: () => unwrap(api.get('/categories/surfaces')),
   create: (body) => unwrap(api.post('/categories', body)),
+  update: (id, body) => unwrap(api.patch(`/categories/${id}`, body)),
   createStyle: (body) => unwrap(api.post('/categories/styles', body)),
+  updateStyle: (id, body) => unwrap(api.patch(`/categories/styles/${id}`, body)),
+  removeStyle: (id) => unwrap(api.delete(`/categories/styles/${id}`)),
+  updateSurface: (name, body) => unwrap(api.patch(`/categories/surfaces/${encodeURIComponent(name)}`, body)),
+  removeSurface: (name) => unwrap(api.delete(`/categories/surfaces/${encodeURIComponent(name)}`)),
   remove: (id) => unwrap(api.delete(`/categories/${id}`)),
 };
 

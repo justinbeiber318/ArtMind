@@ -1,4 +1,3 @@
-import { Prisma } from '@prisma/client';
 import { ApiError } from '../utils/ApiError.js';
 import { env } from '../config/env.js';
 
@@ -15,20 +14,6 @@ export function errorHandler(err, _req, res, _next) {
   if (err.code === 'LIMIT_FILE_SIZE') {
     statusCode = 400;
     message = 'Image is too large. Maximum size is 5 MB';
-  }
-
-  // Map common Prisma errors to friendly HTTP responses.
-  if (err instanceof Prisma.PrismaClientKnownRequestError) {
-    if (err.code === 'P2002') {
-      statusCode = 409;
-      message = `A record with that ${err.meta?.target ?? 'value'} already exists`;
-    } else if (err.code === 'P2025') {
-      statusCode = 404;
-      message = 'Record not found';
-    } else if (err.code === 'P2003') {
-      statusCode = 400;
-      message = 'This record is still referenced by others and cannot be deleted';
-    }
   }
 
   if (statusCode >= 500 && env.nodeEnv !== 'test') {

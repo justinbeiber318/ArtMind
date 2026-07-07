@@ -1,4 +1,4 @@
-import { prisma } from '../../config/prisma.js';
+import { db } from '../../config/database.js';
 import { hashPassword, verifyPassword } from '../../utils/password.js';
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../../utils/tokens.js';
 import { ApiError } from '../../utils/ApiError.js';
@@ -18,16 +18,16 @@ function issueTokens(user) {
 
 export const authService = {
   async register({ email, password, name }) {
-    const existing = await prisma.user.findUnique({ where: { email } });
+    const existing = await db.user.findUnique({ where: { email } });
     if (existing) throw ApiError.conflict('Email already registered');
 
     const passwordHash = await hashPassword(password);
-    const user = await prisma.user.create({
+    const user = await db.user.create({
       data: { email, passwordHash, name },
     });
 
     const tokens = issueTokens(user);
-    await prisma.user.update({
+    await db.user.update({
       where: { id: user.id },
       data: { refreshToken: tokens.refreshToken },
     });
@@ -35,7 +35,7 @@ export const authService = {
   },
 
   async login({ email, password }) {
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await db.user.findUnique({ where: { email } });
     if (!user) throw ApiError.unauthorized('Invalid credentials');
     if (user.refreshToken === '__BLOCKED__') throw ApiError.forbidden('Account is blocked');
 
@@ -43,7 +43,7 @@ export const authService = {
     if (!ok) throw ApiError.unauthorized('Invalid credentials');
 
     const tokens = issueTokens(user);
-    await prisma.user.update({
+    await db.user.update({
       where: { id: user.id },
       data: { refreshToken: tokens.refreshToken },
     });
@@ -58,20 +58,21 @@ export const authService = {
     } catch {
       throw ApiError.unauthorized('Invalid refresh token');
     }
-    const user = await prisma.user.findUnique({ where: { id: decoded.id } });
+    const user = await db.user.findUnique({ where: { id: decoded.id } });
     // Reject if the stored token doesn't match — handles logout / rotation / theft.
     if (user?.refreshToken === '__BLOCKED__') throw ApiError.forbidden('Account is blocked');
     if (!user || user.refreshToken !== refreshToken) {
       throw ApiError.unauthorized('Refresh token revoked');
     }
     const tokens = issueTokens(user);
-    await prisma.user.update({
+    await db.user.update({
       where: { id: user.id },
       data: { refreshToken: tokens.refreshToken },
     });
     return tokens;
   },
 
+<<<<<<< HEAD
   async logout(userId, refreshToken) {
     if (userId) {
       await prisma.user.updateMany({
@@ -87,5 +88,12 @@ export const authService = {
         data: { refreshToken: null },
       });
     }
+=======
+  async logout(userId) {
+    await db.user.update({
+      where: { id: userId },
+      data: { refreshToken: null },
+    });
+>>>>>>> 561a62b9d81ee3d723357fedb9ff4b465d876d4c
   },
 };

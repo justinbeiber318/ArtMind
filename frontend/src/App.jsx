@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux';
 import Navbar from './components/Navbar.jsx';
 import Footer from './components/Footer.jsx';
 import ChatbotWidget from './components/ChatbotWidget.jsx';
+import ScrollToTopButton from './components/ScrollToTopButton.jsx';
 import { selectIsAuthed, selectIsAdmin } from './features/auth/authSlice.js';
 
 import Home from './pages/Home.jsx';
@@ -36,8 +37,13 @@ export default function App() {
 
   return (
     <>
+<<<<<<< HEAD
       {!isHome && !isAdminArea && !isImmersive && <Navbar />}
       <main>
+=======
+      {!isHome && !isAdminArea && <Navbar />}
+      <main className={!isHome && !isAdminArea ? 'site-main site-main--with-header' : 'site-main'}>
+>>>>>>> 561a62b9d81ee3d723357fedb9ff4b465d876d4c
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/virtual-gallery" element={<VirtualGallery />} />
@@ -56,8 +62,14 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+<<<<<<< HEAD
       {!isHome && !isAdminArea && !isImmersive && <Footer />}
       {!isHome && !isAdminArea && !isImmersive && <ChatbotWidget />}
+=======
+      {!isHome && !isAdminArea && <Footer />}
+      {!isHome && !isAdminArea && <ChatbotWidget />}
+      {!isHome && !isAdminArea && <ScrollToTopButton />}
+>>>>>>> 561a62b9d81ee3d723357fedb9ff4b465d876d4c
     </>
   );
 }

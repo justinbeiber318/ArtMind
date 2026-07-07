@@ -1,5 +1,5 @@
 import sharp from "sharp";
-import { prisma } from "../../config/prisma.js";
+import { db } from "../../config/database.js";
 import { extractDominantColors } from "./colorExtractor.js";
 import { ApiError } from "../../utils/ApiError.js";
 
@@ -40,6 +40,7 @@ async function loadModel() {
 async function bufferToTensor(tf, buffer) {
   const { data, info } = await sharp(buffer)
     .resize(224, 224, { fit: "fill" })
+    .toColorspace("srgb")
     .removeAlpha()
     .raw()
     .toBuffer({ resolveWithObject: true });
@@ -52,6 +53,14 @@ async function bufferToTensor(tf, buffer) {
       rgb[i * 3] = data[i];
       rgb[i * 3 + 1] = data[i];
       rgb[i * 3 + 2] = data[i];
+    }
+  }
+  if (info.channels > 3) {
+    rgb = Buffer.alloc(info.width * info.height * 3);
+    for (let i = 0; i < info.width * info.height; i += 1) {
+      rgb[i * 3] = data[i * info.channels];
+      rgb[i * 3 + 1] = data[i * info.channels + 1];
+      rgb[i * 3 + 2] = data[i * info.channels + 2];
     }
   }
 
@@ -210,7 +219,11 @@ export const recognitionService = {
     }
 
     // Surface a few real gallery paintings that share the detected style/colours.
+<<<<<<< HEAD
     const rawRecommendations = await prisma.painting.findMany({
+=======
+    const recommendations = await db.painting.findMany({
+>>>>>>> 561a62b9d81ee3d723357fedb9ff4b465d876d4c
       where: {
         AND: [
           {
@@ -252,7 +265,7 @@ export const recognitionService = {
       recommendations,
     };
 
-    const history = await prisma.uploadedImage.create({
+    const history = await db.uploadedImage.create({
       data: {
         userId: userId ?? null,
         imageUrl: imageUrl ?? "",
@@ -269,13 +282,13 @@ export const recognitionService = {
         confidence: result.confidence,
       },
     });
-    await prisma.analytics.create({ data: { metric: "recognition" } });
+    await db.analytics.create({ data: { metric: "recognition" } });
 
     return { ...result, id: history.id, imageUrl, thumbnailUrl, createdAt: history.createdAt };
   },
 
   async history(userId) {
-    const items = await prisma.uploadedImage.findMany({
+    const items = await db.uploadedImage.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
       take: 50,
@@ -284,9 +297,10 @@ export const recognitionService = {
   },
 
   async getHistoryItem(userId, id) {
-    const item = await prisma.uploadedImage.findFirst({ where: { id, userId } });
+    const item = await db.uploadedImage.findFirst({ where: { id, userId } });
     if (!item) throw ApiError.notFound("Recognition result not found");
     const record = normalizeHistoryRecord(item);
+<<<<<<< HEAD
     const rawRecommendations = record.recommendationIds.length
       ? await prisma.painting.findMany({
         where: {
@@ -295,6 +309,11 @@ export const recognitionService = {
             { OR: [{ uploadedById: null }, { featured: true }] },
           ],
         },
+=======
+    const recommendations = record.recommendationIds.length
+      ? await db.painting.findMany({
+        where: { id: { in: record.recommendationIds } },
+>>>>>>> 561a62b9d81ee3d723357fedb9ff4b465d876d4c
         include: { artist: true, category: true, style: true },
       })
       : [];
@@ -303,9 +322,9 @@ export const recognitionService = {
   },
 
   async deleteHistoryItem(userId, id) {
-    const item = await prisma.uploadedImage.findFirst({ where: { id, userId } });
+    const item = await db.uploadedImage.findFirst({ where: { id, userId } });
     if (!item) throw ApiError.notFound("Recognition result not found");
-    await prisma.uploadedImage.delete({ where: { id } });
+    await db.uploadedImage.delete({ where: { id } });
     return { deleted: true };
   },
 };

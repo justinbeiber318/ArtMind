@@ -1,8 +1,8 @@
 import { env } from '../../config/env.js';
-import { prisma } from '../../config/prisma.js';
+import { db } from '../../config/database.js';
 import { ApiError } from '../../utils/ApiError.js';
 
-const SYSTEM_PROMPT = `You are the Aurelis gallery concierge — a knowledgeable, concise art assistant.
+const SYSTEM_PROMPT = `You are the Aurelis gallery concierge - a knowledgeable, concise art assistant.
 You help visitors with: explanations of artworks and movements, artist biographies,
 style descriptions, collection suggestions, and navigating the Aurelis website
 (Gallery, AI Search, AI Recognition, Favorites, Dashboard pages).
@@ -17,25 +17,33 @@ function detectLanguageHint(message, history = []) {
   const latestUserMessages = [
     ...history.filter((m) => m.role === 'user').slice(-2).map((m) => m.content),
     message,
-  ].join('\n').toLowerCase();
+  ].join('\n');
+  const normalized = latestUserMessages.toLowerCase();
 
-  if (/[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(latestUserMessages)) {
+  if (/[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(normalized)) {
     return 'Vietnamese';
   }
-  if (/\b(tôi|toi|ban|bạn|mình|minh|hay|la|là|cua|của|tranh|nghe thuat|nghệ thuật|tieng viet|tiếng việt)\b/.test(latestUserMessages)) {
+  if (/\b(toi|ban|minh|hay|la|cua|tranh|nghe thuat|tieng viet)\b/.test(normalized)) {
     return 'Vietnamese';
   }
-  if (/[\u3040-\u30ff]/.test(latestUserMessages)) return 'Japanese';
-  if (/[\uac00-\ud7af]/.test(latestUserMessages)) return 'Korean';
-  if (/[àâçéèêëîïôûùüÿœæ]/i.test(latestUserMessages)) return 'French';
-  if (/\b(francais|français|bonjour|merci|tableau|peinture|artiste)\b/.test(latestUserMessages)) {
+  if (/[\u3040-\u30ff]/.test(normalized)) return 'Japanese';
+  if (/[\uac00-\ud7af]/.test(normalized)) return 'Korean';
+  if (/[àâçéèêëîïôûùüÿœæ]/i.test(normalized)) return 'French';
+  if (/\b(francais|français|bonjour|merci|tableau|peinture|artiste)\b/.test(normalized)) {
     return 'French';
   }
   return null;
 }
 
-// Lazily create the OpenAI client so the app still boots without a key
-// (chatbot endpoints then return a clear error instead of crashing on import).
+function fallbackReply(message, history = []) {
+  const languageHint = detectLanguageHint(message, history);
+  if (languageHint === 'Vietnamese') {
+    return 'Xin chào! Hiện tại kết nối AI bên ngoài đang tạm lỗi, nhưng tôi vẫn có thể hỗ trợ bạn về Aurelis: tìm tranh, giải thích phong cách hội họa, gợi ý tác phẩm, hoặc hướng dẫn dùng AI Recognition.';
+  }
+  return 'Hello! The external AI provider is temporarily unavailable, but I can still help with Aurelis: finding artworks, explaining painting styles, suggesting collection matches, or guiding you through AI Recognition.';
+}
+
+// Lazily create the OpenAI client so the app still boots without a key.
 let clientPromise = null;
 async function getClient() {
   if (!env.openai.apiKey) {
@@ -50,7 +58,14 @@ async function getClient() {
 
 export const chatbotService = {
   async chat({ message, history = [], userId }) {
-    const client = await getClient();
+    let client;
+    try {
+      client = await getClient();
+    } catch (err) {
+      console.warn('Chatbot provider is not configured, using fallback:', err.message);
+      return { reply: fallbackReply(message, history), tokensUsed: null, fallback: true };
+    }
+
     const languageHint = detectLanguageHint(message, history);
     const systemPrompt = languageHint
       ? `${SYSTEM_PROMPT}\n\nThe visitor's current language appears to be ${languageHint}. Reply in ${languageHint}.`
@@ -71,7 +86,8 @@ export const chatbotService = {
         messages,
       });
     } catch (err) {
-      throw new ApiError(502, `AI provider error: ${err.message}`);
+      console.warn('AI provider unavailable, using chatbot fallback:', err.message);
+      return { reply: fallbackReply(message, history), tokensUsed: null, fallback: true };
     }
 
     const reply = completion.choices?.[0]?.message?.content?.trim();
@@ -81,7 +97,7 @@ export const chatbotService = {
     const tokensUsed = completion.usage?.total_tokens ?? null;
 
     try {
-      await prisma.chatLog.create({
+      await db.chatLog.create({
         data: { userId: userId ?? null, prompt: message, response: reply, tokensUsed },
       });
     } catch (err) {

@@ -125,7 +125,7 @@ export default function PaintingDetails() {
 
   return (
     <>
-      <section className="section container" style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: 56, alignItems: 'start' }}>
+      <section className="section container painting-detail-layout">
         <div ref={imgContainerRef} style={{ background: 'var(--light-gray)', opacity: 0 }}>
           <img src={painting.imageUrl} alt={painting.title}
             style={{ width: '100%', objectFit: 'contain' }} />
@@ -145,7 +145,7 @@ export default function PaintingDetails() {
 
           <div className="divider" style={{ margin: '24px 0' }} />
 
-          <dl style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', rowGap: 12, columnGap: 24, fontSize: '0.92rem' }}>
+          <dl className="painting-specs">
             <Spec label="Style" value={painting.style?.name} />
             <Spec label="Medium" value={painting.medium} />
             <Spec label="Surface" value={painting.surface} />
@@ -157,7 +157,7 @@ export default function PaintingDetails() {
           {colors.length > 0 && (
             <div style={{ marginTop: 24 }}>
               <div style={{ fontSize: '0.72rem', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 10 }}>Dominant colors</div>
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div className="painting-swatches">
                 {colors.map((hex) => (
                   <div key={hex} title={hex}
                     style={{ width: 40, height: 40, background: hex, border: '1px solid var(--border)' }} />
@@ -166,7 +166,7 @@ export default function PaintingDetails() {
             </div>
           )}
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 32 }}>
+          <div className="painting-actions">
             {authed && !isAdmin ? (
               <button className="btn" onClick={() => favoriteMutation.mutate()} disabled={favoriteMutation.isPending || !painting?.id}>
                 {favorited ? '♥ In favorites' : '♡ Add to favorites'}

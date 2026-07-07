@@ -8,7 +8,7 @@ export default function Register() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '' });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -19,6 +19,18 @@ export default function Register() {
     setError('');
     if (form.password.length < 8) {
       setError('Password must be at least 8 characters.');
+      return;
+    }
+    if (!/[A-Z]/.test(form.password)) {
+      setError('Password must contain at least 1 uppercase letter.');
+      return;
+    }
+    if (!/[^A-Za-z0-9]/.test(form.password)) {
+      setError('Password must contain at least 1 special character.');
+      return;
+    }
+    if (form.password !== form.confirmPassword) {
+      setError('Passwords do not match.');
       return;
     }
     setSubmitting(true);
@@ -56,7 +68,14 @@ export default function Register() {
             <label htmlFor="password">Password</label>
             <input id="password" name="password" type="password" autoComplete="new-password"
               value={form.password} onChange={onChange} required />
-            <span className="muted" style={{ fontSize: '0.78rem' }}>At least 8 characters.</span>
+            <span className="muted" style={{ fontSize: '0.78rem' }}>
+              At least 8 characters, 1 uppercase letter, 1 special character.
+            </span>
+          </div>
+          <div className="field">
+            <label htmlFor="confirmPassword">Confirm password</label>
+            <input id="confirmPassword" name="confirmPassword" type="password" autoComplete="new-password"
+              value={form.confirmPassword} onChange={onChange} required />
           </div>
           <button className="btn btn--block" disabled={submitting}>
             {submitting ? 'Creating account…' : 'Create account'}

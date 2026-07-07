@@ -1,9 +1,12 @@
-import { prisma } from '../../config/prisma.js';
+import { db } from '../../config/database.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { uniqueSlug } from '../../utils/slug.js';
+import { extractDominantColors } from '../recognition/colorExtractor.js';
 
 const includeRefs = { artist: true, category: true, style: true };
+const PALETTE_TIMEOUT_MS = 4500;
 
+<<<<<<< HEAD
 function cleanOptionalString(value, { lowercase = false } = {}) {
   if (value === undefined) return undefined;
   if (value === null) return null;
@@ -19,6 +22,9 @@ function colorVariants(hex) {
 }
 
 // Translates the gallery filter/sort query into a Prisma query.
+=======
+// Translates the gallery filter/sort query into a db query.
+>>>>>>> 561a62b9d81ee3d723357fedb9ff4b465d876d4c
 function buildWhere(q) {
   const and = [];
 
@@ -45,8 +51,22 @@ function buildWhere(q) {
   if (colors.length) {
     and.push({ OR: colors.map((color) => ({ dominantColors: { array_contains: color } })) });
   }
+<<<<<<< HEAD
 
   return and.length ? { AND: and } : {};
+=======
+  if (q.status === 'pending') {
+    where.uploadedById = { not: null };
+    where.featured = false;
+  }
+  if (q.status === 'approved') {
+    where.featured = true;
+  }
+  if (q.status === 'system') {
+    where.uploadedById = null;
+  }
+  return where;
+>>>>>>> 561a62b9d81ee3d723357fedb9ff4b465d876d4c
 }
 
 function publicVisibilityWhere() {
@@ -76,6 +96,7 @@ function buildOrderBy(sort) {
   }
 }
 
+<<<<<<< HEAD
 function sanitizePaintingData(data) {
   const next = { ...data };
 
@@ -99,18 +120,60 @@ async function withFavoriteState(painting, viewer) {
   });
 
   return { ...painting, isFavorited: Boolean(favorite) };
+=======
+function hasPalette(colors) {
+  return Array.isArray(colors) && colors.length > 0;
+}
+
+async function fetchImageBuffer(url) {
+  if (!url || !/^https?:\/\//i.test(url)) return null;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), PALETTE_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) return null;
+    const type = response.headers.get('content-type') || '';
+    if (type && !type.startsWith('image/')) return null;
+    return Buffer.from(await response.arrayBuffer());
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function deriveDominantColorsFromUrl(imageUrl) {
+  const buffer = await fetchImageBuffer(imageUrl);
+  if (!buffer) return [];
+  try {
+    return await extractDominantColors(buffer, 5);
+  } catch {
+    return [];
+  }
+}
+
+async function ensureDominantColors(painting) {
+  if (!painting || hasPalette(painting.dominantColors)) return painting;
+  const dominantColors = await deriveDominantColorsFromUrl(painting.imageUrl);
+  if (!hasPalette(dominantColors)) return painting;
+  await db.painting.update({
+    where: { id: painting.id },
+    data: { dominantColors },
+  });
+  return { ...painting, dominantColors };
+>>>>>>> 561a62b9d81ee3d723357fedb9ff4b465d876d4c
 }
 
 export const paintingService = {
   async list(query, { skip, take }) {
     const where = buildPublicWhere(query);
     const [items, total] = await Promise.all([
-      prisma.painting.findMany({
+      db.painting.findMany({
         where, skip, take,
         orderBy: buildOrderBy(query.sort),
         include: includeRefs,
       }),
-      prisma.painting.count({ where }),
+      db.painting.count({ where }),
     ]);
     return { items, total };
   },
@@ -118,19 +181,24 @@ export const paintingService = {
   async listAdmin(query, { skip, take }) {
     const where = buildWhere(query);
     const [items, total] = await Promise.all([
-      prisma.painting.findMany({
+      db.painting.findMany({
         where, skip, take,
         orderBy: buildOrderBy(query.sort),
         include: includeRefs,
       }),
-      prisma.painting.count({ where }),
+      db.painting.count({ where }),
     ]);
     return { items, total };
   },
 
+<<<<<<< HEAD
   async getBySlug(slug, viewer, options = {}) {
     const { trackView = true } = options;
     const painting = await prisma.painting.findUnique({
+=======
+  async getBySlug(slug, viewer) {
+    const painting = await db.painting.findUnique({
+>>>>>>> 561a62b9d81ee3d723357fedb9ff4b465d876d4c
       where: { slug },
       include: includeRefs,
     });
@@ -142,12 +210,25 @@ export const paintingService = {
       throw ApiError.notFound('Painting not found');
     }
 
+<<<<<<< HEAD
     let viewCount = painting.viewCount;
     if (trackView) {
       // Atomic view increment; record history for signed-in viewers.
       await prisma.painting.update({
         where: { id: painting.id },
         data: { viewCount: { increment: 1 } },
+=======
+    const enrichedPainting = await ensureDominantColors(painting);
+
+    // Atomic view increment; record history for signed-in viewers.
+    await db.painting.update({
+      where: { id: enrichedPainting.id },
+      data: { viewCount: { increment: 1 } },
+    });
+    if (viewer?.id) {
+      await db.viewHistory.create({
+        data: { userId: viewer.id, paintingId: enrichedPainting.id },
+>>>>>>> 561a62b9d81ee3d723357fedb9ff4b465d876d4c
       });
       if (viewer?.id) {
         await prisma.viewHistory.create({
@@ -156,17 +237,22 @@ export const paintingService = {
       }
       viewCount += 1;
     }
+<<<<<<< HEAD
 
     return withFavoriteState({ ...painting, viewCount }, viewer);
+=======
+    enrichedPainting.viewCount += 1;
+    return enrichedPainting;
+>>>>>>> 561a62b9d81ee3d723357fedb9ff4b465d876d4c
   },
 
   // Content-based "similar" lookup: same style/category, ranked by shared
   // dominant colours, excluding the source painting.
   async getSimilar(paintingId, limit = 6) {
-    const source = await prisma.painting.findUnique({ where: { id: paintingId } });
+    const source = await db.painting.findUnique({ where: { id: paintingId } });
     if (!source) throw ApiError.notFound('Painting not found');
 
-    const candidates = await prisma.painting.findMany({
+    const candidates = await db.painting.findMany({
       where: {
         AND: [
           { id: { not: paintingId } },
@@ -194,12 +280,23 @@ export const paintingService = {
   },
 
   async create(data) {
+<<<<<<< HEAD
     const clean = sanitizePaintingData(data);
     const slug = await uniqueSlug(clean.title, (s) =>
       prisma.painting.findUnique({ where: { slug: s } }).then(Boolean),
     );
     return prisma.painting.create({
       data: { ...clean, slug },
+=======
+    const slug = await uniqueSlug(data.title, (s) =>
+      db.painting.findUnique({ where: { slug: s } }).then(Boolean),
+    );
+    const dominantColors = hasPalette(data.dominantColors)
+      ? data.dominantColors
+      : await deriveDominantColorsFromUrl(data.imageUrl);
+    return db.painting.create({
+      data: { ...data, slug, dominantColors },
+>>>>>>> 561a62b9d81ee3d723357fedb9ff4b465d876d4c
       include: includeRefs,
     });
   },
@@ -209,6 +306,7 @@ export const paintingService = {
     categoryId, styleId, medium, surface, year,
     imageUrl, thumbnailUrl, dominantColors,
   }) {
+<<<<<<< HEAD
     const cleanArtistName = String(artistName || '').trim();
     let artist = await prisma.artist.findFirst({ where: { name: cleanArtistName } });
     if (!artist) {
@@ -221,9 +319,21 @@ export const paintingService = {
     const cleanTitle = String(title || '').trim();
     const slug = await uniqueSlug(cleanTitle, (s) =>
       prisma.painting.findUnique({ where: { slug: s } }).then(Boolean),
+=======
+    let artist = await db.artist.findFirst({ where: { name: artistName } });
+    if (!artist) {
+      const artistSlug = await uniqueSlug(artistName, (s) =>
+        db.artist.findUnique({ where: { slug: s } }).then(Boolean),
+      );
+      artist = await db.artist.create({ data: { name: artistName, slug: artistSlug } });
+    }
+
+    const slug = await uniqueSlug(title, (s) =>
+      db.painting.findUnique({ where: { slug: s } }).then(Boolean),
+>>>>>>> 561a62b9d81ee3d723357fedb9ff4b465d876d4c
     );
 
-    return prisma.painting.create({
+    return db.painting.create({
       data: {
         title: cleanTitle,
         slug,
@@ -244,7 +354,7 @@ export const paintingService = {
   },
 
   async listByUploader(userId) {
-    return prisma.painting.findMany({
+    return db.painting.findMany({
       where: { uploadedById: userId },
       orderBy: { createdAt: 'desc' },
       include: includeRefs,
@@ -252,14 +362,23 @@ export const paintingService = {
   },
 
   async update(id, data) {
+<<<<<<< HEAD
     return prisma.painting.update({ where: { id }, data: sanitizePaintingData(data), include: includeRefs });
+=======
+    const nextData = { ...data };
+    if (!hasPalette(nextData.dominantColors) && nextData.imageUrl) {
+      const dominantColors = await deriveDominantColorsFromUrl(nextData.imageUrl);
+      if (hasPalette(dominantColors)) nextData.dominantColors = dominantColors;
+    }
+    return db.painting.update({ where: { id }, data: nextData, include: includeRefs });
+>>>>>>> 561a62b9d81ee3d723357fedb9ff4b465d876d4c
   },
 
   async remove(id) {
-    await prisma.painting.delete({ where: { id } });
+    await db.painting.delete({ where: { id } });
   },
 
   async saveAiSummary(id, summary) {
-    return prisma.painting.update({ where: { id }, data: { aiSummary: summary } });
+    return db.painting.update({ where: { id }, data: { aiSummary: summary } });
   },
 };

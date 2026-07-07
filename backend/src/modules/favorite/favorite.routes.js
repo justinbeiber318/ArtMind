@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { prisma } from '../../config/prisma.js';
+import { db } from '../../config/database.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { requireAuth, requireUser } from '../../middleware/auth.js';
@@ -17,8 +17,13 @@ const publicPaintingWhere = {
 };
 
 router.get('/', asyncHandler(async (req, res) => {
+<<<<<<< HEAD
   const favorites = await prisma.favorite.findMany({
     where: { userId: req.user.id, painting: publicPaintingWhere },
+=======
+  const favorites = await db.favorite.findMany({
+    where: { userId: req.user.id },
+>>>>>>> 561a62b9d81ee3d723357fedb9ff4b465d876d4c
     orderBy: { createdAt: 'desc' },
     include: { painting: { include: { artist: true, style: true, category: true } } },
   });
@@ -29,6 +34,7 @@ router.get('/', asyncHandler(async (req, res) => {
 router.post('/:paintingId', asyncHandler(async (req, res) => {
   const userId = req.user.id;
   const paintingId = Number(req.params.paintingId);
+<<<<<<< HEAD
   if (!Number.isInteger(paintingId) || paintingId <= 0) {
     throw ApiError.badRequest('Invalid painting id');
   }
@@ -40,15 +46,18 @@ router.post('/:paintingId', asyncHandler(async (req, res) => {
   if (!painting) throw ApiError.notFound('Painting not found');
 
   const existing = await prisma.favorite.findUnique({
+=======
+  const existing = await db.favorite.findUnique({
+>>>>>>> 561a62b9d81ee3d723357fedb9ff4b465d876d4c
     where: { userId_paintingId: { userId, paintingId } },
   });
 
   let favorited;
   if (existing) {
-    await prisma.favorite.delete({ where: { id: existing.id } });
+    await db.favorite.delete({ where: { id: existing.id } });
     favorited = false;
   } else {
-    await prisma.favorite.create({ data: { userId, paintingId } });
+    await db.favorite.create({ data: { userId, paintingId } });
     favorited = true;
   }
 

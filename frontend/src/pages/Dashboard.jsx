@@ -78,9 +78,9 @@ export default function Dashboard() {
               {collections.length === 0 ? (
                 <p className="muted">No collections yet.</p>
               ) : (
-                <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
+                <div className="dashboard-collection-grid">
                   {collections.map((c) => (
-                    <div key={c.id} style={{ border: '1px solid var(--border)', padding: 20 }}>
+                    <div key={c.id} className="dashboard-collection-card">
                       <h4 style={{ fontWeight: 500 }}>{c.name}</h4>
                       <p className="muted" style={{ fontSize: '0.85rem', marginTop: 4 }}>
                         {c._count?.items ?? 0} works
@@ -222,7 +222,7 @@ function RecognitionHistory({ items, isLoading, onDelete, isDeleting }) {
 function Row({ title, items, empty, link, linkLabel, renderAction }) {
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 18 }}>
+      <div className="dashboard-row-head">
         <h2>{title}</h2>
         {link && <Link to={link} className="muted" style={{ fontSize: '0.85rem' }}>{linkLabel} -&gt;</Link>}
       </div>

@@ -7,6 +7,7 @@ export async function extractDominantColors(buffer, count = 5) {
   // NOTE: the sharp option is `resolveWithObject` (returns { data, info }).
   const { data, info } = await sharp(buffer)
     .resize(width, width, { fit: "inside" })
+    .toColorspace("srgb")
     .removeAlpha()
     .raw()
     .toBuffer({ resolveWithObject: true });

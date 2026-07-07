@@ -34,7 +34,7 @@ export default function ArtistsTable() {
 
   const saveArtist = useMutation({
     mutationFn: ({ id, form: values }) => {
-      const body = normalizeArtist(values);
+      const body = normalizeArtist(values, Boolean(id));
       return id ? artistApi.update(id, body) : artistApi.create(body);
     },
     onSuccess: () => {
@@ -141,8 +141,13 @@ export default function ArtistsTable() {
             <Field label="Nationality" value={form.nationality} onChange={(v) => setForm({ ...form, nationality: v })} />
             <Field label="Profile Image URL" value={form.portraitUrl} onChange={(v) => setForm({ ...form, portraitUrl: v })} />
             <Field label="Born Year" type="number" value={form.bornYear} onChange={(v) => setForm({ ...form, bornYear: v })} />
-            <Field label="Died Year" type="number" value={form.diedYear} onChange={(v) => setForm({ ...form, diedYear: v })} />
-            <Field label="Social Links" value="" onChange={() => {}} placeholder="Add this field in database to store links" disabled />
+            <Field
+              label="Died Year"
+              type="number"
+              value={form.diedYear}
+              placeholder="Leave empty if the artist is still alive."
+              onChange={(v) => setForm({ ...form, diedYear: v })}
+            />
             <TextArea label="Biography" value={form.bio} onChange={(v) => setForm({ ...form, bio: v })} />
             <div className="admin-form-actions">
               <GlassButton onClick={closeModal}>Cancel</GlassButton>
@@ -160,9 +165,10 @@ export default function ArtistsTable() {
               ['Name', modal.artist.name],
               ['Biography', modal.artist.bio],
               ['Nationality', modal.artist.nationality],
+              ['Born Year', modal.artist.bornYear],
+              ['Died Year', modal.artist.diedYear || 'Living'],
               ['Profile Image', modal.artist.portraitUrl],
               ['Number of Paintings', modal.artist._count?.paintings ?? 0],
-              ['Social Links', 'Not configured in database'],
             ]}
           />
         </AdminModal>
@@ -171,6 +177,7 @@ export default function ArtistsTable() {
   );
 }
 
+<<<<<<< HEAD
 function normalizeArtist(data) {
   const optionalText = (value) => {
     const text = String(value || '').trim();
@@ -184,11 +191,24 @@ function normalizeArtist(data) {
     portraitUrl: optionalText(data.portraitUrl),
     bornYear: data.bornYear ? Number(data.bornYear) : null,
     diedYear: data.diedYear ? Number(data.diedYear) : null,
+=======
+function normalizeArtist(data, isUpdate = false) {
+  return {
+    name: data.name,
+    bio: data.bio || undefined,
+    nationality: data.nationality || undefined,
+    portraitUrl: data.portraitUrl || undefined,
+    bornYear: data.bornYear ? Number(data.bornYear) : undefined,
+    diedYear: data.diedYear ? Number(data.diedYear) : (isUpdate ? null : undefined),
+>>>>>>> 561a62b9d81ee3d723357fedb9ff4b465d876d4c
   };
 }
 
 function Avatar({ src, name }) {
-  if (src) return <img src={src} alt={name} className="admin-table-avatar" />;
+  const [failed, setFailed] = useState(false);
+  if (src && !failed) {
+    return <img src={src} alt={name} className="admin-table-avatar" onError={() => setFailed(true)} />;
+  }
   return <div className="admin-table-avatar">{name?.[0]?.toUpperCase() || '?'}</div>;
 }
 

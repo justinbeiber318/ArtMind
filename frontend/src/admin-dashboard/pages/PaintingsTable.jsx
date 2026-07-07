@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Eye, ImageIcon, Pencil, Plus, Trash2 } from 'lucide-react';
+import { CheckCircle2, Clock3, Eye, ImageIcon, Pencil, Plus, Trash2, XCircle } from 'lucide-react';
 
 import { artistApi, categoryApi, paintingApi } from '../../api/endpoints';
 import DataTable from '../components/ui/DataTable';
@@ -20,7 +20,6 @@ const emptyForm = {
   styleId: '',
   surface: '',
   medium: '',
-  price: '',
   featured: true,
 };
 
@@ -29,10 +28,15 @@ export default function PaintingsTable() {
   const [err, setErr] = useState('');
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState(emptyForm);
+  const [status, setStatus] = useState('all');
 
   const paintings = useQuery({
-    queryKey: ['admin', 'paintings'],
-    queryFn: () => paintingApi.adminList({ limit: 100, sort: 'newest' }),
+    queryKey: ['admin', 'paintings', status],
+    queryFn: () => paintingApi.adminList({
+      limit: 50,
+      sort: 'newest',
+      ...(status !== 'all' ? { status } : {}),
+    }),
   });
   const artists = useQuery({ queryKey: ['admin', 'artists', 'options'], queryFn: () => artistApi.list({ limit: 200 }) });
   const categories = useQuery({ queryKey: ['categories'], queryFn: categoryApi.list });
@@ -69,7 +73,18 @@ export default function PaintingsTable() {
     },
   });
 
+  const approvePainting = useMutation({
+    mutationFn: id => paintingApi.update(id, { featured: true }),
+    onSuccess: () => {
+      invalidate();
+      toast.success('Upload approved and published');
+    },
+    onError: e => toast.error(e?.response?.data?.message || e.message || 'Could not approve upload'),
+  });
+
   const rows = paintings.data?.data || [];
+  const pendingCount = rows.filter(isPendingUpload).length;
+  const approvedCount = rows.filter((painting) => painting.featured).length;
 
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: ['admin', 'paintings'] });
@@ -92,7 +107,6 @@ export default function PaintingsTable() {
       styleId: painting.styleId ? String(painting.styleId) : '',
       surface: painting.surface || '',
       medium: painting.medium || '',
-      price: painting.price ? String(painting.price) : '',
       featured: Boolean(painting.featured),
     });
     setModal({ type: 'form', title: 'Edit Painting', id: painting.id });
@@ -113,31 +127,56 @@ export default function PaintingsTable() {
     }
   }
 
+  function handleReject(painting) {
+    if (window.confirm(`Reject "${painting.title}"? The database record will be removed.`)) {
+      deletePainting.mutate(painting.id);
+    }
+  }
+
   return (
     <>
       <DataTable
         title="Painting Management"
-        subtitle={`${rows.length} paintings`}
+        subtitle={`${rows.length} paintings · ${pendingCount} pending · ${approvedCount} published`}
         icon={<ImageIcon size={16} />}
-        head={['Image', 'Painting Name', 'Artist', 'Category', 'Style', 'Surface Type', 'Color Medium', 'Price', 'Status', 'Created Date', 'Actions']}
+        className="admin-paintings-table"
+        head={['Image', 'Painting Name', 'Artist', 'Category', 'Style', 'Surface Type', 'Color Medium', 'Status', 'Created Date', 'Actions']}
         loading={paintings.isLoading}
         error={err}
-        actions={<GlassButton primary icon={<Plus size={16} />} onClick={openCreate}>Add Painting</GlassButton>}
+        actions={(
+          <div className="admin-review-toolbar">
+            <FilterButton active={status === 'all'} onClick={() => setStatus('all')}>All</FilterButton>
+            <FilterButton active={status === 'pending'} onClick={() => setStatus('pending')}>Pending</FilterButton>
+            <FilterButton active={status === 'approved'} onClick={() => setStatus('approved')}>Published</FilterButton>
+            <FilterButton active={status === 'system'} onClick={() => setStatus('system')}>Curated</FilterButton>
+            <GlassButton primary icon={<Plus size={16} />} onClick={openCreate}>Add Painting</GlassButton>
+          </div>
+        )}
         rows={rows.map((painting, i) => (
           <TableRow key={painting.id} i={i}>
             <TableCell><Thumb src={painting.thumbnailUrl || painting.imageUrl} alt={painting.title} /></TableCell>
-            <TableCell className="font-medium text-[#f0e6c8]">{painting.title}</TableCell>
+            <TableCell className="font-medium text-[#f0e6c8]">
+              <div className="admin-title-cell">
+                <span>{painting.title}</span>
+                {painting.uploadedById && <small>User upload</small>}
+              </div>
+            </TableCell>
             <TableCell>{painting.artist?.name || '-'}</TableCell>
             <TableCell><StatusBadge variant="blue">{painting.category?.name || '-'}</StatusBadge></TableCell>
             <TableCell>{painting.style?.name || '-'}</TableCell>
             <TableCell>{painting.surface || '-'}</TableCell>
             <TableCell>{painting.medium || '-'}</TableCell>
-            <TableCell>{painting.price ? `$${Number(painting.price).toLocaleString()}` : '-'}</TableCell>
-            <TableCell><StatusBadge variant={painting.featured ? 'green' : 'gray'}>{painting.featured ? 'Published' : 'Hidden'}</StatusBadge></TableCell>
+            <TableCell><ReviewStatus painting={painting} /></TableCell>
             <TableCell className="text-xs">{new Date(painting.createdAt).toLocaleDateString()}</TableCell>
             <TableCell>
               <ActionGroup>
                 <IconButton title="View" onClick={() => openView(painting)}><Eye size={15} /></IconButton>
+                {isPendingUpload(painting) && (
+                  <>
+                    <IconButton title="Approve upload" onClick={() => approvePainting.mutate(painting.id)}><CheckCircle2 size={15} /></IconButton>
+                    <IconButton title="Reject upload" danger onClick={() => handleReject(painting)}><XCircle size={15} /></IconButton>
+                  </>
+                )}
                 <IconButton title="Edit" onClick={() => openEdit(painting)}><Pencil size={15} /></IconButton>
                 <IconButton title="Delete" danger onClick={() => handleDelete(painting)}><Trash2 size={15} /></IconButton>
               </ActionGroup>
@@ -166,7 +205,6 @@ export default function PaintingsTable() {
             </Select>
             <Field label="Surface Type" value={form.surface} onChange={(v) => setForm({ ...form, surface: v })} />
             <Field label="Color Medium" value={form.medium} onChange={(v) => setForm({ ...form, medium: v })} />
-            <Field label="Price" type="number" value={form.price} onChange={(v) => setForm({ ...form, price: v })} />
             <label className="admin-check"><input type="checkbox" checked={form.featured} onChange={(e) => setForm({ ...form, featured: e.target.checked })} /> Published</label>
             <TextArea label="Description" value={form.description} onChange={(v) => setForm({ ...form, description: v })} required />
             <div className="admin-form-actions">
@@ -188,8 +226,8 @@ export default function PaintingsTable() {
               ['Style', modal.painting.style?.name || '-'],
               ['Surface Type', modal.painting.surface || '-'],
               ['Color Medium', modal.painting.medium || '-'],
-              ['Price', modal.painting.price ? `$${Number(modal.painting.price).toLocaleString()}` : '-'],
-              ['Status', modal.painting.featured ? 'Published' : 'Hidden'],
+              ['Source', modal.painting.uploadedById ? 'User upload' : 'Curated collection'],
+              ['Status', getReviewLabel(modal.painting)],
               ['Created Date', new Date(modal.painting.createdAt).toLocaleString()],
               ['Description', modal.painting.description],
             ]}
@@ -216,16 +254,47 @@ function normalizePainting(data, isEdit = false) {
     thumbnailUrl: data.thumbnailUrl.trim() || (isEdit ? null : data.imageUrl.trim()),
     artistId: Number(data.artistId),
     categoryId: Number(data.categoryId),
+<<<<<<< HEAD
     styleId: data.styleId ? Number(data.styleId) : (isEdit ? null : undefined),
     surface: surface ? surface.toLowerCase() : surface,
     medium: optionalText(data.medium),
     price: data.price !== '' ? Number(data.price) : (isEdit ? null : undefined),
+=======
+    styleId: data.styleId ? Number(data.styleId) : undefined,
+    surface: data.surface || undefined,
+    medium: data.medium || undefined,
+>>>>>>> 561a62b9d81ee3d723357fedb9ff4b465d876d4c
     featured: Boolean(data.featured),
   };
 }
 
 function Thumb({ src, alt }) {
   return src ? <img src={src} alt={alt} className="admin-table-thumb" /> : <div className="admin-table-thumb" />;
+}
+
+function isPendingUpload(painting) {
+  return Boolean(painting.uploadedById && !painting.featured);
+}
+
+function getReviewLabel(painting) {
+  if (isPendingUpload(painting)) return 'Pending review';
+  if (painting.featured) return 'Published';
+  return 'Hidden';
+}
+
+function ReviewStatus({ painting }) {
+  if (isPendingUpload(painting)) {
+    return <StatusBadge variant="amber"><Clock3 size={12} /> Pending review</StatusBadge>;
+  }
+  return <StatusBadge variant={painting.featured ? 'emerald' : 'gray'}>{painting.featured ? 'Published' : 'Hidden'}</StatusBadge>;
+}
+
+function FilterButton({ active, onClick, children }) {
+  return (
+    <button type="button" className={`admin-filter-chip ${active ? 'is-active' : ''}`} onClick={onClick}>
+      {children}
+    </button>
+  );
 }
 
 function ActionGroup({ children }) {
