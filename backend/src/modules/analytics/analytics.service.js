@@ -175,15 +175,16 @@ export const analyticsService = {
     const paintings = await db.painting.findMany({
       select: { id: true, viewCount: true, _count: { select: { favorites: true } } }
     });
-    const updates = paintings.map((p) => {
-      const score = p.viewCount / 100 + p._count.favorites * 2.0;
-      return db.painting.update({
-        where: { id: p.id },
-        data: { trendingScore: score }
-      });
+    await db.$transaction(async (tx) => {
+      for (const p of paintings) {
+        const score = p.viewCount / 100 + p._count.favorites * 2.0;
+        await tx.painting.update({
+          where: { id: p.id },
+          data: { trendingScore: score }
+        });
+      }
     });
-    await db.$transaction(updates);
-    return { updated: updates.length };
+    return { updated: paintings.length };
   },
 
   async rebuildAllRecommendations() {

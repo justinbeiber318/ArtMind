@@ -13,7 +13,6 @@ export async function uniqueSlug(base, exists) {
   const root = slugify(base);
   let candidate = root;
   let n = 1;
-  // eslint-disable-next-line no-await-in-loop
   while (await exists(candidate)) {
     candidate = `${root}-${n++}`;
   }

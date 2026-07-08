@@ -34,11 +34,12 @@ export default function App() {
   const isHome = location.pathname === '/';
   const isAdminArea = location.pathname.startsWith('/admin');
   const isImmersive = location.pathname.startsWith('/virtual-gallery');
+  const hasGlobalChrome = !isHome && !isAdminArea && !isImmersive;
 
   return (
     <>
-      {!isHome && !isAdminArea && !isImmersive && <Navbar />}
-      <main>
+      {hasGlobalChrome && <Navbar />}
+      <main className={hasGlobalChrome ? 'site-main--with-header' : undefined}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/virtual-gallery" element={<VirtualGallery />} />
@@ -57,8 +58,8 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
-      {!isHome && !isAdminArea && !isImmersive && <Footer />}
-      {!isHome && !isAdminArea && !isImmersive && <ChatbotWidget />}
+      {hasGlobalChrome && <Footer />}
+      {hasGlobalChrome && <ChatbotWidget />}
     </>
   );
 }

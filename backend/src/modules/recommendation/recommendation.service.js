@@ -120,14 +120,14 @@ export const recommendationService = {
       .slice(0, 24);
 
     // Replace the user's recommendation set transactionally.
-    await db.$transaction([
-      db.recommendation.deleteMany({ where: { userId } }),
-      ...top.map((t) =>
-        db.recommendation.create({
+    await db.$transaction(async (tx) => {
+      await tx.recommendation.deleteMany({ where: { userId } });
+      for (const t of top) {
+        await tx.recommendation.create({
           data: { userId, paintingId: t.paintingId, score: t.score, reason: t.reason },
-        }),
-      ),
-    ]);
+        });
+      }
+    });
 
     return top.length;
   },

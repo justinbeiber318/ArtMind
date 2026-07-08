@@ -60,7 +60,6 @@ export default function Navbar() {
   const navLinkStyle = ({ isActive }) => ({
     color: isActive ? 'var(--navy)' : 'var(--dark-gray)',
     borderBottomColor: isActive ? 'var(--navy)' : 'transparent',
-    opacity: 0,
   });
 
   return (

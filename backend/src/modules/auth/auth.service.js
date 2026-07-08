@@ -4,7 +4,9 @@ import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../../uti
 import { ApiError } from '../../utils/ApiError.js';
 
 function publicUser(user) {
-  const { passwordHash, refreshToken, ...rest } = user;
+  const rest = { ...user };
+  delete rest.passwordHash;
+  delete rest.refreshToken;
   return rest;
 }
 

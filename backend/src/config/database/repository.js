@@ -11,6 +11,10 @@ import {
 } from './sql.js';
 
 export function createModel(modelName) {
+  return createModelWithQuery(modelName, query);
+}
+
+export function createModelWithQuery(modelName, execute) {
   const meta = model(modelName);
   return {
     async findMany({ where, skip, take, orderBy, include, select } = {}) {
@@ -22,9 +26,9 @@ export function createModel(modelName) {
         limitSql(take, 'LIMIT'),
         limitSql(skip, 'OFFSET'),
       ].filter(Boolean).join(' ');
-      const rows = await query(sql, params);
+      const rows = await execute(sql, params);
       const records = rows.map((row) => fromDb(meta, row));
-      await attachIncludes(modelName, records, include || select);
+      await attachIncludes(modelName, records, include || select, execute);
       return records.map((record) => applySelect(record, select));
     },
 
@@ -39,7 +43,7 @@ export function createModel(modelName) {
 
     async count({ where } = {}) {
       const params = [];
-      const rows = await query(
+      const rows = await execute(
         `SELECT COUNT(*) AS count FROM \`${meta.table}\` WHERE ${whereSql(meta, where, params)}`,
         params,
       );
@@ -51,7 +55,7 @@ export function createModel(modelName) {
       const columns = Object.keys(row);
       const values = Object.values(row);
       const sql = `INSERT INTO \`${meta.table}\` (${columns.map((c) => `\`${c}\``).join(',')}) VALUES (${columns.map(() => '?').join(',')})`;
-      const result = await query(sql, values);
+      const result = await execute(sql, values);
       return this.findUnique({ where: { id: result.insertId }, include, select });
     },
 
@@ -59,7 +63,7 @@ export function createModel(modelName) {
       const params = [];
       const sets = updateAssignments(meta, data, params);
       const whereParams = [];
-      await query(
+      await execute(
         `UPDATE \`${meta.table}\` SET ${sets.join(', ')} WHERE ${whereSql(meta, expandUnique(meta, where), whereParams)}`,
         [...params, ...whereParams],
       );
@@ -73,7 +77,7 @@ export function createModel(modelName) {
         return `\`${column}\` = ?`;
       });
       const whereParams = [];
-      const result = await query(
+      const result = await execute(
         `UPDATE \`${meta.table}\` SET ${sets.join(', ')} WHERE ${whereSql(meta, where, whereParams)}`,
         [...params, ...whereParams],
       );
@@ -83,19 +87,19 @@ export function createModel(modelName) {
     async delete({ where }) {
       const existing = await this.findUnique({ where });
       const params = [];
-      await query(`DELETE FROM \`${meta.table}\` WHERE ${whereSql(meta, expandUnique(meta, where), params)}`, params);
+      await execute(`DELETE FROM \`${meta.table}\` WHERE ${whereSql(meta, expandUnique(meta, where), params)}`, params);
       return existing;
     },
 
     async deleteMany({ where } = {}) {
       const params = [];
-      const result = await query(`DELETE FROM \`${meta.table}\` WHERE ${whereSql(meta, where, params)}`, params);
+      const result = await execute(`DELETE FROM \`${meta.table}\` WHERE ${whereSql(meta, where, params)}`, params);
       return { count: result.affectedRows };
     },
 
     async aggregate(args = {}) {
       const fields = Object.keys(args._sum || {});
-      const rows = await query(`SELECT ${fields.map((f) => `SUM(${col(meta, f)}) AS \`${f}\``).join(', ')} FROM \`${meta.table}\``);
+      const rows = await execute(`SELECT ${fields.map((f) => `SUM(${col(meta, f)}) AS \`${f}\``).join(', ')} FROM \`${meta.table}\``);
       return { _sum: Object.fromEntries(fields.map((f) => [f, rows[0][f]])) };
     },
 
@@ -105,7 +109,7 @@ export function createModel(modelName) {
       let sql = `SELECT ${selects.join(', ')} FROM \`${meta.table}\` WHERE ${whereSql(meta, where, params)} GROUP BY ${by.map((f) => col(meta, f)).join(', ')}`;
       if (orderBy) sql += ` ${orderSql(meta, orderBy)}`;
       sql += limitSql(take, 'LIMIT');
-      const rows = await query(sql, params);
+      const rows = await execute(sql, params);
       return rows.map((row) => groupRow(meta, by, row, { _sum, _avg, _count }));
     },
   };
@@ -129,17 +133,17 @@ function updateAssignments(meta, data, params) {
   return sets;
 }
 
-async function attachIncludes(modelName, records, include) {
+async function attachIncludes(modelName, records, include, execute) {
   if (!include || records.length === 0) return records;
   const meta = model(modelName);
   await Promise.all(Object.entries(include).map(async ([key, options]) => {
     if (key === '_count') {
-      await attachCounts(meta, records, options.select || {});
+      await attachCounts(meta, records, options.select || {}, execute);
       return;
     }
     const rel = meta.relations?.[key];
     if (!rel) return;
-    const relApi = createModel(rel.model);
+    const relApi = createModelWithQuery(rel.model, execute);
     await Promise.all(records.map(async (record) => {
       const nestedInclude = options === true ? undefined : options.include;
       const nestedSelect = options === true ? undefined : options.select;
@@ -152,14 +156,14 @@ async function attachIncludes(modelName, records, include) {
   return records;
 }
 
-async function attachCounts(meta, records, select) {
+async function attachCounts(meta, records, select, execute) {
   await Promise.all(records.map(async (record) => {
     record._count = {};
     await Promise.all(Object.keys(select).map(async (relName) => {
       const rel = meta.relations?.[relName];
       if (!rel) return;
       const relMeta = model(rel.model);
-      const rows = await query(
+      const rows = await execute(
         `SELECT COUNT(*) AS count FROM \`${relMeta.table}\` WHERE ${col(relMeta, rel.foreign)} = ?`,
         [record[rel.local]],
       );

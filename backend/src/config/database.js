@@ -1,27 +1,35 @@
-import { disconnect, query } from './database/connection.js';
-import { createModel } from './database/repository.js';
+import { disconnect, query, transaction } from './database/connection.js';
+import { createModelWithQuery } from './database/repository.js';
+
+function createDbClient(execute = query) {
+  return {
+    user: createModelWithQuery('user', execute),
+    artist: createModelWithQuery('artist', execute),
+    category: createModelWithQuery('category', execute),
+    style: createModelWithQuery('style', execute),
+    painting: createModelWithQuery('painting', execute),
+    favorite: createModelWithQuery('favorite', execute),
+    recommendation: createModelWithQuery('recommendation', execute),
+    viewHistory: createModelWithQuery('viewHistory', execute),
+    collection: createModelWithQuery('collection', execute),
+    collectionItem: createModelWithQuery('collectionItem', execute),
+    analytics: createModelWithQuery('analytics', execute),
+    chatLog: createModelWithQuery('chatLog', execute),
+    uploadedImage: createModelWithQuery('uploadedImage', execute),
+
+    async $queryRaw(strings, ...values) {
+      return execute(String.raw({ raw: strings }, ...values));
+    },
+  };
+}
 
 export const db = {
-  user: createModel('user'),
-  artist: createModel('artist'),
-  category: createModel('category'),
-  style: createModel('style'),
-  painting: createModel('painting'),
-  favorite: createModel('favorite'),
-  recommendation: createModel('recommendation'),
-  viewHistory: createModel('viewHistory'),
-  collection: createModel('collection'),
-  collectionItem: createModel('collectionItem'),
-  analytics: createModel('analytics'),
-  chatLog: createModel('chatLog'),
-  uploadedImage: createModel('uploadedImage'),
-
-  async $queryRaw(strings, ...values) {
-    return query(String.raw({ raw: strings }, ...values));
-  },
-
+  ...createDbClient(),
   async $transaction(operations) {
-    return Promise.all(operations);
+    if (typeof operations === 'function') {
+      return transaction((execute) => operations(createDbClient(execute)));
+    }
+    throw new Error('Use db.$transaction(async (tx) => { ... }) so queries run on the same connection');
   },
 
   $disconnect: disconnect,
